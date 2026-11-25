@@ -20,7 +20,7 @@ body{position:fixed;inset:0}
 #cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .modal{position:fixed;inset:0;background:#07080dd8;display:none;place-items:center;padding:14px;z-index:9}
 .modal.on{display:grid}
-.box{background:#10151e;width:min(600px,100%);max-height:calc(100vh - 28px);overflow:auto;padding:20px;box-shadow:0 0 0 3px #000,0 0 0 6px #ffcd75,0 0 0 9px #000,0 14px 0 9px #0007}
+.box{background:#10151e;width:min(860px,100%);max-height:calc(100vh - 28px);overflow:auto;padding:20px;box-shadow:0 0 0 3px #000,0 0 0 6px #ffcd75,0 0 0 9px #000,0 14px 0 9px #0007}
 .title{font:clamp(20px,5.4vw,36px)/1.2 "Press Start 2P",monospace;color:var(--amber);text-shadow:4px 4px 0 #b13e53,8px 8px 0 #000;text-align:center;margin:6px 0 6px}
 .sub{text-align:center;color:var(--green);font:10px/1.6 "Press Start 2P",monospace;margin-bottom:14px}
 h2{font:15px/1.4 "Press Start 2P",monospace;color:var(--amber);margin:0 0 12px}
@@ -46,6 +46,19 @@ ul{padding-left:18px;margin:8px 0}
 .money{color:var(--amber);font:13px "Press Start 2P",monospace}
 .btn[disabled]{opacity:.4;cursor:default}
 .sm{min-height:34px;font-size:9px;padding:0 10px}
+.steps{display:flex;gap:6px;margin:0 0 14px}.step{flex:1;text-align:center;padding:9px 4px;font:9px/1.3 "Press Start 2P",monospace;background:#1d2432;color:#566c86;box-shadow:inset 0 0 0 2px #000}.step.on{background:#ffcd75;color:#10151e}.step.done{background:#38563f;color:#a7f070}
+.hub{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0}
+.hubc{display:grid;grid-template-columns:44px 1fr;grid-template-rows:auto auto;column-gap:10px;align-items:center;text-align:left;border:0;cursor:pointer;color:var(--ink);font:inherit;padding:14px;background:#1d2a33;box-shadow:inset 0 0 0 3px #000;min-height:84px}
+.hubc i{grid-row:1/3;font-style:normal;font-size:28px;text-align:center;color:var(--amber)}.hubc b{font:11px/1.5 "Press Start 2P",monospace}.hubc span{font-size:14px;color:#94b0c2}
+.hubc:hover,.hubc:focus-visible{background:#257179;outline:none}.hubc.main{grid-column:1/-1;background:#5d275d;min-height:96px}.hubc.main:hover{background:#7a3a7a}
+.hdr{display:flex;flex-wrap:wrap;gap:6px 22px;background:#0b0d14;padding:9px 12px;margin:0 0 12px;box-shadow:inset 0 0 0 2px #1d2432;font-size:15px}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:16px;position:sticky;bottom:-20px;background:#10151e;padding:12px 0 4px;box-shadow:0 -8px 12px #10151e}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px;background:#1d2a33;margin:8px 0;box-shadow:inset 0 0 0 3px #000}
+.sum{display:flex;gap:14px;align-items:flex-start}.sum img{width:220px;max-width:40%;image-rendering:pixelated;box-shadow:0 0 0 2px #000}
+.sumh{cursor:pointer;font:11px "Press Start 2P",monospace;color:var(--amber);margin:8px 0}
+.msg{background:#0b0d14;padding:8px 12px;margin-bottom:10px;box-shadow:inset 3px 0 0 #a7f070}
+.tmenu{display:grid;gap:10px;max-width:340px;margin:18px auto 4px}.tmenu .btn{min-height:50px}
+@media(max-width:560px){.hub{grid-template-columns:1fr}.sum{flex-direction:column}.sum img{max-width:100%}}
 li{margin:3px 0}
 kbd{font:11px "Press Start 2P",monospace;background:#333c57;padding:2px 5px;box-shadow:0 2px 0 #000}
 .stat{display:grid;grid-template-columns:1fr auto;gap:4px 16px;margin:12px 0;font-size:17px}
@@ -70,7 +83,7 @@ function present(){uc.imageSmoothingEnabled=false;uc.drawImage(lo,0,0,up.width,u
 
 /* ================= AUDIO ================= */
 let AC=null,master=null,muted=false;const lastSfx={};
-function audioInit(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.3;master.connect(AC.destination)}catch(e){AC=null}}
+function audioInit(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.3*CFG.vol/100;master.connect(AC.destination)}catch(e){AC=null}}
 function tone(type,f0,f1,dur,vol=.3,delay=0){const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02)}
 let noiseBuf=null;function noise(dur,vol,fc2,type='lowpass',delay=0){if(!noiseBuf){noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=R()*2-1}
   const t=AC.currentTime+delay,s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=noiseBuf;f.type=type;f.frequency.value=fc2;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t,R()*.5);s.stop(t+dur+.02)}
@@ -727,7 +740,7 @@ function drawHeistWorld(){
     if(cv2.st==='down'){ell(x+1,y+4,6,3,'rgba(0,0,0,.35)');disc(x,y+1,5,'#0b0d14');disc(x,y+1,4,cv2.col);disc(x,y-2,4,'#0b0d14');disc(x,y-2,3,'#ffcd75');disc(x,y-3,2,cv2.hair||'#3a2e2e');px(x-5,y-5,'#ffcd75',2,2);px(x+4,y-5,'#ffcd75',2,2)}
     else{cv2.hair=cv2.hair||pick(['#3a2e2e','#1d2030','#c9a066','#6b4226','#94b0c2']);drawPerson(x,y,cv2.ang,{body:cv2.col,head:'#ffcd75',hair:cv2.hair,walk:cv2.path&&cv2.path.length?S.t*14+cv2.id*9:null,hands:cv2.st==='panic'?'up':null});if(cv2.st==='panic'&&(S.t*4|0)%2)T('!',x-1,y-14,'#f4f4f4',1,null)}}}
 function render(){
-  const sh=S.shake>0?Math.round((R()-.5)*S.shake):0,sh2=S.shake>0?Math.round((R()-.5)*S.shake):0;
+  const sh=S.shake>0&&CFG.shake?Math.round((R()-.5)*S.shake):0,sh2=S.shake>0&&CFG.shake?Math.round((R()-.5)*S.shake):0;
   c.fillStyle='#07080d';c.fillRect(0,0,VW,VH);
   c.save();c.beginPath();c.rect(MX,MY,GW*TS,GH*TS);c.clip();c.translate(sh,sh2);
   c.drawImage(staticLayer,MX,MY);
@@ -928,42 +941,88 @@ const stars=n=>'★'.repeat(n)+'☆'.repeat(3-n);
 let PICK={b:0,sq:null,kit:null};
 const nbar=v=>`<span class="bar"><i style="width:${v}%;background:${v>=60?'#73eff7':v>=35?'#ffcd75':v>=15?'#ef7d57':'#ff4d6d'}"></i></span>`;
 function chips(r){return r.traits.map(t=>`<span class="chip ${HTR[t].good?'':'bad'}" title="${HTR[t].d}">${HTR[t].n}</span>`).join('')+(r.bond?`<span class="chip" style="background:#5d275d">${r.bondType} de ${(GC.roster.find(q=>q.id===r.bond)||{name:'?'}).name}</span>`:'')}
-function title(){S=null;open(`<div class="title">EL GRAN<br>GOLPE</div><div class="sub" style="color:#ffcd75">UN BANCO · UN RELOJ · UNA BANDA AL BORDE</div>
-  <p>Eres el cerebro de una banda de ladrones. Entra al banco, abre la bóveda, carga las bolsas en la camioneta y escapa antes de que llegue la policía.</p>
-  <p class="note">Cada miembro tiene <b>nervios</b>. Las balas, la alarma, las sirenas y ver caer a un compañero los desgastan. Con los nervios rotos fallan disparos, desobedecen, se paralizan, se rinden, sufren un colapso o huyen. Después del golpe, algunos renuncian.</p>
-  <div class="row" style="justify-content:center"><button class="btn alt" data-act="fs">PANTALLA COMPLETA</button>${GC&&GC.roster?'<button class="btn" data-act="hq">CONTINUAR CARRERA</button><button class="btn alt" data-act="reset">NUEVA</button>':'<button class="btn" data-act="newcar">EMPEZAR</button>'}</div>`)}
-function hq(msg){S=null;if(!GC||!GC.roster)newCareer();const C=GC;C.jail=C.jail||[];for(const r of C.roster.concat(C.pool)){r.lvl=r.lvl||1;r.xp=r.xp||0;r.traits=r.traits.map(t=>t==='veterano'?'punteria':t).filter(t=>HTR[t])}const cheapest=Math.min(...C.pool.map(r=>r.cost));
-  if(C.debt>DEBT_MAX){open(`<h2>EL PRESTAMISTA PERDIÓ LA PACIENCIA</h2><p>La deuda llegó a <b>${fmt(C.debt)}</b>. Don Ramiro mandó a sus hombres al escondite y la banda se dispersó.</p><p>Golpes: <b>${C.done}</b> · Botín total: <b>${fmt(C.total)}</b></p><div class="row"><button class="btn" data-act="newcar">NUEVA CARRERA</button></div>`);return}
-  if(!C.roster.length&&C.money<cheapest&&C.debt+10000>BORROW_CAP){open(`<h2>SE ACABÓ LA BANDA</h2><p>No queda nadie, no hay dinero y nadie te presta más.</p><p>Golpes: <b>${C.done}</b> · Botín total: <b>${fmt(C.total)}</b></p><div class="row"><button class="btn" data-act="newcar">NUEVA CARRERA</button></div>`);return}
+let CUR='hub',CFG_BACK='hub';
+let CFG={fsAuto:false,vol:80,shake:true,speed:1,halcon:true};try{Object.assign(CFG,JSON.parse(localStorage.getItem('golpe-cfg'))||{})}catch(e){}
+const storeCFG=()=>{try{localStorage.setItem('golpe-cfg',JSON.stringify(CFG))}catch(e){}};
+function applyCFG(){if(master)master.gain.value=.3*CFG.vol/100}
+let fsTried=false;addEventListener('pointerdown',()=>{if(CFG.fsAuto&&!fsTried&&!document.fullscreenElement){fsTried=true;toggleFS()}},{capture:true});
+addEventListener('fullscreenchange',()=>{if(CUR==='settings'&&modal.classList.contains('on')&&!S)hq()});
+const lootCount=b=>BANKS[b].join('').split('L').length-1;
+const clock=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+function hdr(){const C=GC;return `<div class="hdr"><span>Dinero <b class="money">${fmt(C.money)}</b></span><span>Deuda <b style="color:${C.debt>50000?'#ff6b6b':'#e8ecef'}">${fmt(C.debt)}</b></span><span>Búsqueda <b style="color:#ff6b6b">${'★'.repeat(Math.min(8,Math.floor(C.heat)))||'—'}</b></span><span>Golpes <b>${C.done}</b></span></div>`}
+const STEPS=['BANCO','BANDA','EQUIPO','CONFIRMAR'];
+function stepper(n){return `<div class="steps">${STEPS.map((s,i)=>`<div class="step ${i+1===n?'on':i+1<n?'done':''}">${i+1} · ${s}</div>`).join('')}</div>`}
+function nav(back,next,nextLabel,dis){return `<div class="nav"><button class="btn alt" data-go="${back}">← ${back==='hub'?'ESCONDITE':'ATRÁS'}</button>${next?`<button class="btn" data-go="${next}" ${dis?'disabled':''}>${nextLabel||'SIGUIENTE'} →</button>`:''}</div>`}
+function crewCard(r,sel,attr){return `<button class="ms ${sel?'on':''}" ${attr} style="min-height:60px"><span><b>${r.name.toUpperCase()}</b> <span class="note">${HCLS[r.cls].n} · Nivel ${r.lvl}</span> <span class="bar" style="width:46px" title="Experiencia"><i style="width:${Math.round((r.xp||0)/xpNeed(r.lvl)*100)}%;background:#a7f070"></i></span><br><span class="note">${HCLS[r.cls].d}</span><br>${chips(r)}</span><span class="r">Nervios ${nbar(r.nerve)}<br>${r.heists} golpes · ${r.kills} bajas</span></button>`}
+function migrate(){const C=GC;C.jail=C.jail||[];for(const r of C.roster.concat(C.pool)){r.lvl=r.lvl||1;r.xp=r.xp||0;r.traits=r.traits.map(t=>t==='veterano'?'punteria':t).filter(t=>HTR[t])}
   if(!PICK.sq)PICK.sq=new Set(C.roster.slice(0,4).map(r=>r.id));for(const id of[...PICK.sq])if(!C.roster.find(r=>r.id===id))PICK.sq.delete(id);if(PICK.b>=C.unlocked)PICK.b=0;
-  if(!PICK.kit)PICK.kit={broca:1,c4:1,flash:4,chaleco:4,botiquin:2,calmante:2,inhibidor:1,chofer:1};for(const k in ITEMS)PICK.kit[k]=Math.max(0,Math.min(PICK.kit[k]||0,C.inv[k]||0,ITEMS[k].max));
-  const imgs=BANKS.map(b=>preview(b)),pct=C.upg.lavanderia?8:12,n=PICK.sq.size;
-  open(`<h2>EL ESCONDITE</h2>${msg?`<div style="margin-bottom:8px">${msg}</div>`:''}
-  <div class="stat"><span>Dinero</span><span class="money">${fmt(C.money)}</span><span>Deuda con Don Ramiro <span class="note">(+8% por golpe, límite ${fmt(DEBT_MAX)})</span></span><span style="color:${C.debt>50000?'#ff6b6b':'#e8ecef'}">${fmt(C.debt)}</span><span>Búsqueda policial</span><span style="color:#ff6b6b">${'★'.repeat(Math.min(8,Math.floor(C.heat)))||'—'}</span><span>Golpes · ganancia total</span><span>${C.done} · ${fmt(C.total)}</span></div>
-  <div class="row" style="justify-content:flex-start"><button class="btn sm" data-act="pay" ${C.debt&&C.money?'':'disabled'}>PAGAR $5.000</button><button class="btn sm" data-act="payall" ${C.debt&&C.money>=C.debt?'':'disabled'}>PAGAR TODO</button><button class="btn sm alt" data-act="borrow" ${C.debt+10000<=BORROW_CAP?'':'disabled'}>PEDIR $10.000</button></div>
-  <h2 style="margin-top:14px">1 · EL BANCO</h2><div class="list">${BANKINFO.map((b,i)=>{const lock=i>=C.unlocked;return `<button class="ms ${PICK.b===i?'on':''} ${lock?'lock':''}" data-b="${i}" ${lock?'disabled':''}><img src="${imgs[i]}" alt=""><span><b>${b.n.toUpperCase()}</b><br><span class="note">${b.d}</span><br><span class="stars">${'★'.repeat(b.diff)}${'☆'.repeat(3-b.diff)}</span>${lock?' <span class="note">Haz un golpe exitoso en el anterior</span>':''}</span><span class="r">Bolsa: <b>${fmt(b.bag)}</b><br>Policía: <b>${Math.floor(policeTime(i)/60)}:${String(policeTime(i)%60).padStart(2,'0')}</b></span></button>`}).join('')}</div>
-  <h2>2 · LA BANDA <span class="note">(${n}/4 · cada uno que escape se lleva ${pct}% del botín: ${n*pct}% en total)</span></h2><div class="list">${C.roster.map(r=>`<button class="ms ${PICK.sq.has(r.id)?'on':''}" data-r="${r.id}" style="min-height:56px"><span><b>${r.name.toUpperCase()}</b> <span class="note">${HCLS[r.cls].n} · Nivel ${r.lvl}</span> <span class="bar" style="width:46px" title="Experiencia"><i style="width:${Math.round(r.xp/xpNeed(r.lvl)*100)}%;background:#a7f070"></i></span><br>${chips(r)}</span><span class="r">Nervios ${nbar(r.nerve)}<br>${r.heists} golpes · ${r.kills} bajas</span></button>`).join('')||'<p class="note">No queda nadie. Recluta abajo.</p>'}</div>
-  <h2>3 · EQUIPO PARA ESTE GOLPE <span class="note">(se gasta al usarlo; si fracasas, lo pierdes todo)</span></h2><div class="list">${Object.entries(ITEMS).map(([k,it])=>`<div class="ms" style="cursor:default;min-height:50px"><span><b>${it.n.toUpperCase()}</b> <span class="note">· tienes ${C.inv[k]||0}</span><br><span class="note">${it.d}</span></span><span class="r" style="white-space:nowrap"><button class="btn sm alt" data-kit="${k}" data-dv="-1" ${PICK.kit[k]>0?'':'disabled'}>−</button> <b style="display:inline-block;min-width:22px;text-align:center">${PICK.kit[k]}</b> <button class="btn sm alt" data-kit="${k}" data-dv="1" ${PICK.kit[k]<Math.min(C.inv[k]||0,it.max)?'':'disabled'}>+</button><br><button class="btn sm" data-buy="${k}" style="margin-top:4px" ${C.money<it.cost?'disabled':''}>COMPRAR ${fmt(it.cost)}</button></span></div>`).join('')}</div>
-  <div class="row"><button class="btn" data-act="go-heist" ${n?'':'disabled'}>¡AL BANCO!</button></div>
-  <h2 style="margin-top:16px">TRABAJITOS</h2><div class="list"><div class="ms" style="cursor:default"><span><b>TRABAJITO DE POCA MONTA</b><br><span class="note">Gana ${fmt(1500)}–${fmt(4000)}. Sube la búsqueda y hay riesgo de que arresten a alguien.</span></span><span class="r"><button class="btn sm" data-act="small" ${C.roster.length?'':'disabled'}>HACERLO</button></span></div>
-  <div class="ms" style="cursor:default"><span><b>BAJAR EL PERFIL</b><br><span class="note">Una semana sin hacer ruido: −2 de búsqueda y la banda recupera nervios.</span></span><span class="r"><button class="btn sm" data-act="lay" ${C.money>=2500&&C.heat>0?'':'disabled'}>${fmt(2500)}</button></span></div></div>
-  ${C.jail.length?`<h2 style="margin-top:16px">EN LA CÁRCEL</h2><div class="list">${C.jail.map((j,i)=>`<div class="ms" style="cursor:default;min-height:50px"><span><b>${j.r.name.toUpperCase()}</b> <span class="note">${HCLS[j.r.cls].n} · Nivel ${j.r.lvl}</span><br><span class="note">Sale solo en ${j.left} golpe${j.left>1?'s':''}</span></span><span class="r"><button class="btn sm" data-bail="${i}" ${C.money<j.bail||C.roster.length>=8?'disabled':''}>FIANZA ${fmt(j.bail)}</button></span></div>`).join('')}</div>`:''}
-  <h2 style="margin-top:16px">RECLUTAR</h2><div class="list">${C.pool.map((r,i)=>`<div class="ms" style="cursor:default;min-height:52px"><span><b>${r.name.toUpperCase()}</b> <span class="note">${HCLS[r.cls].n} · Nivel ${r.lvl}</span><br>${r.traits.map(t=>`<span class="chip ${HTR[t].good?'':'bad'}" title="${HTR[t].d}">${HTR[t].n}</span>`).join('')}</span><span class="r"><button class="btn sm" data-hire="${i}" ${C.money<r.cost||C.roster.length>=8?'disabled':''}>${fmt(r.cost)}</button></span></div>`).join('')}</div>
-  <h2 style="margin-top:16px">INVERSIONES <span class="note">(permanentes)</span></h2><div class="list">${Object.entries(GINV).map(([k,u])=>`<div class="ms" style="cursor:default;min-height:48px"><span><b>${u.n.toUpperCase()}</b><br><span class="note">${u.d}</span></span><span class="r">${C.upg[k]?'<span class="chip">TUYA</span>':`<button class="btn sm" data-upg="${k}" ${C.money<u.cost?'disabled':''}>${fmt(u.cost)}</button>`}</span></div>`).join('')}</div>
-  ${C.fallen.length||C.jailed.length||C.quit.length?`<h2 style="margin-top:16px">LOS QUE YA NO ESTÁN</h2><p class="note">${C.fallen.length?'Muertos: '+C.fallen.join(', ')+'<br>':''}${C.jailed.length?'Perdidos en la cárcel: '+C.jailed.join(', ')+'<br>':''}${C.quit.length?'Se fueron: '+C.quit.join(', '):''}</p>`:''}
-  <details style="margin-top:16px"><summary style="cursor:pointer;font:12px 'Press Start 2P',monospace;color:#ffcd75">LISTA DE RASGOS</summary>
-  <p class="note">Cada golpe da experiencia (escapar +3, sobrevivir +1, cada baja +1, cada 2 bolsas +1). Cada nivel da +5 de vida, +2% de precisión, taladro más rápido y aguante. Al subir de nivel, un rasgo bueno puede mejorar, uno malo puede superarse o pueden ganar uno nuevo. Un golpe traumático (quebrarse, ver morir a alguien, terminar sin nervios o malherido) puede empeorar un rasgo o dejar una secuela.</p>
+  if(!PICK.kit)PICK.kit={broca:1,c4:1,flash:4,chaleco:4,botiquin:2,calmante:2,inhibidor:1,chofer:1};for(const k in ITEMS)PICK.kit[k]=Math.max(0,Math.min(PICK.kit[k]||0,C.inv[k]||0,ITEMS[k].max))}
+function hq(msg){S=null;if(!GC||!GC.roster)newCareer();const C=GC;migrate();const cheapest=Math.min(...C.pool.map(r=>r.cost));
+  if(C.debt>DEBT_MAX){open(`<h2>EL PRESTAMISTA PERDIÓ LA PACIENCIA</h2><p>La deuda llegó a <b>${fmt(C.debt)}</b>. Don Ramiro mandó a sus hombres al escondite y la banda se dispersó.</p><p>Golpes: <b>${C.done}</b> · Botín total: <b>${fmt(C.total)}</b></p><div class="row"><button class="btn" data-act="newcar">NUEVA CARRERA</button></div>`);return}
+  if(!C.roster.length&&!C.jail.length&&C.money<cheapest&&C.debt+10000>BORROW_CAP){open(`<h2>SE ACABÓ LA BANDA</h2><p>No queda nadie, no hay dinero y nadie te presta más.</p><p>Golpes: <b>${C.done}</b> · Botín total: <b>${fmt(C.total)}</b></p><div class="row"><button class="btn" data-act="newcar">NUEVA CARRERA</button></div>`);return}
+  const M=msg?`<div class="msg">${msg}</div>`:'';const pct=C.upg.lavanderia?8:12,n=PICK.sq.size;let h='';
+  if(CUR==='hub'){h=`<h2>EL ESCONDITE</h2>${M}${hdr()}<div class="hub">
+    <button class="hubc main" data-go="plan1"><i>◆</i><b>PLANEAR UN GOLPE</b><span>Elige el banco, la banda y el equipo, paso a paso.</span></button>
+    <button class="hubc" data-go="crew"><i>☻</i><b>LA BANDA</b><span>${C.roster.length} miembros${C.jail.length?` · ${C.jail.length} en la cárcel`:''}. Niveles, rasgos y fianzas.</span></button>
+    <button class="hubc" data-go="recruit"><i>+</i><b>RECLUTAR</b><span>${C.pool.length} candidatos esperando.</span></button>
+    <button class="hubc" data-go="market"><i>▣</i><b>MERCADO NEGRO</b><span>Compra brocas, C4, flashes y más.</span></button>
+    <button class="hubc" data-go="finance"><i>$</i><b>FINANZAS</b><span>Deuda con Don Ramiro e inversiones.</span></button>
+    <button class="hubc" data-go="jobs"><i>¤</i><b>TRABAJITOS</b><span>Dinero rápido o bajar el perfil.</span></button>
+    <button class="hubc" data-go="settings"><i>⚙</i><b>AJUSTES</b><span>Pantalla completa, sonido y más.</span></button>
+    <button class="hubc" data-act="menu"><i>⌂</i><b>MENÚ PRINCIPAL</b><span>Volver a la portada.</span></button></div>`}
+  else if(CUR==='plan1'){const imgs=BANKS.map(b=>preview(b));h=`<h2>PLANEAR UN GOLPE</h2>${stepper(1)}${M}<p class="note">¿Qué banco vas a asaltar?</p><div class="list">${BANKINFO.map((b,i)=>{const lock=i>=C.unlocked;return `<button class="ms ${PICK.b===i?'on':''} ${lock?'lock':''}" data-b="${i}" ${lock?'disabled':''}><img src="${imgs[i]}" alt="" style="width:150px;height:98px"><span><b>${b.n.toUpperCase()}</b><br><span class="note">${b.d}</span><br><span class="stars">${'★'.repeat(b.diff)}${'☆'.repeat(3-b.diff)}</span>${lock?'<br><span class="note">Haz un golpe exitoso en el anterior para desbloquearlo</span>':''}</span><span class="r">${lootCount(i)} bolsas × <b>${fmt(b.bag)}</b><br>Policía en <b>${clock(policeTime(i))}</b></span></button>`}).join('')}</div>${nav('hub','plan2')}`}
+  else if(CUR==='plan2'){h=`<h2>PLANEAR UN GOLPE</h2>${stepper(2)}${M}<p class="note">Elige hasta 4 miembros (${n}/4). Cada uno que escape se lleva ${pct}% del botín. Sin <b>Técnico</b> la bóveda tarda mucho; el <b>Cerebro</b> calma a la banda.</p><div class="list">${C.roster.map(r=>crewCard(r,PICK.sq.has(r.id),`data-r="${r.id}"`)).join('')||'<p class="note">No tienes a nadie. Ve a RECLUTAR.</p>'}</div>${nav('plan1','plan3',null,!n)}`}
+  else if(CUR==='plan3'){h=`<h2>PLANEAR UN GOLPE</h2>${stepper(3)}${M}${hdr()}<p class="note">Elige qué llevar. Lo que uses se gasta; <b>si el golpe fracasa, pierdes todo lo que llevaste</b>. Puedes comprar aquí mismo.</p><div class="list">${itemRows(true)}</div>${nav('plan2','plan4')}`}
+  else if(CUR==='plan4'){const b=PICK.b,bi=BANKINFO[b],sq=C.roster.filter(r=>PICK.sq.has(r.id)).slice(0,4),kit=Object.entries(PICK.kit).filter(([k,v])=>v>0),max=lootCount(b)*bi.bag,cutP=sq.reduce((a,r)=>a+Math.max(.03,pct/100+fxOf(r.traits).cut),0);
+    const warn=[];if(!sq.some(r=>r.cls==='tecnico'))warn.push('Nadie es Técnico: taladrar la bóveda será lento.');if(!PICK.kit.broca&&!(PICK.kit.c4&&sq.some(r=>r.cls==='explosivos')))warn.push('No llevas broca térmica: taladrar tardará 3 veces más.');if(PICK.kit.c4&&!sq.some(r=>r.cls==='explosivos'))warn.push('Llevas C4 pero nadie es de Explosivos.');if(sq.some(r=>r.nerve<35))warn.push('Hay miembros con los nervios bajos.');
+    h=`<h2>PLANEAR UN GOLPE</h2>${stepper(4)}${M}<div class="sum"><img src="${preview(BANKS[b])}" alt=""><div><b class="money">${bi.n.toUpperCase()}</b><br><span class="note">${bi.d}</span><div class="stat" style="margin:8px 0 0"><span>Policía llega en</span><span>${clock(policeTime(b)+(PICK.kit.chofer?25:0))}</span><span>Botín máximo</span><span class="money">${fmt(max)}</span><span>Parte de la banda</span><span>${Math.round(cutP*100)}%</span></div></div></div>
+    <h2 style="margin-top:12px">LA BANDA</h2><p>${sq.map((r,i)=>`<span style="color:${SQCOL[i]}">■</span> <b>${r.name}</b> <span class="note">${HCLS[r.cls].n} Nv${r.lvl}</span>`).join(' &nbsp; ')}</p>
+    <h2>EL EQUIPO</h2><p class="note">${kit.length?kit.map(([k,v])=>v+'× '+ITEMS[k].n).join(' · '):'No llevas nada.'}</p>
+    ${warn.length?`<p style="color:#ef7d57">${warn.map(w=>'⚠ '+w).join('<br>')}</p>`:''}
+    <details><summary class="sumh">¿CÓMO FUNCIONA EL GOLPE?</summary><ul><li><b>Bóveda</b>: alguien se queda junto a la puerta de acero. El Técnico taladra rápido; Explosivos la vuela con C4 en 3 s, pero suena la alarma.</li><li><b>Panel de seguridad</b>: cortarlo apaga cámaras y alarma. Guardias y empleados asustados corren a activarla; acércate a los civiles para que se tiren al suelo.</li><li><b>Botín</b>: cada bolsa te hace más lento. Llévalas a la camioneta y pulsa <b>¡HUIR!</b>; quien no esté dentro se queda atrás.</li><li><b>Nervios</b>: si se rompen, alguien puede rendirse o colapsar; acércate para levantarlo.</li></ul></details>
+    <h2 style="margin-top:12px">¿CÓMO LO VAS A JUGAR?</h2><div class="hub"><button class="hubc" data-start="leader"><i>☻</i><b>MODO LÍDER</b><span>Controlas al primero de la banda: clic para caminar, clic derecho para dar órdenes. Tiempo Halcón.</span></button><button class="hubc" data-start="tactical"><i>✎</i><b>MANDO TÁCTICO</b><span>Planificas rutas para todos y das la orden. Botones BÓVEDA, BOTÍN y PANEL.</span></button></div>
+    ${nav('plan3',null)}`}
+  else if(CUR==='crew'){h=`<h2>LA BANDA</h2>${M}${hdr()}<div class="list">${C.roster.map(r=>crewCard(r,false,'style="cursor:default"')).join('')||'<p class="note">No queda nadie.</p>'}</div>
+    ${C.jail.length?`<h2 style="margin-top:16px">EN LA CÁRCEL</h2><div class="list">${C.jail.map((j,i)=>`<div class="ms" style="cursor:default;min-height:50px"><span><b>${j.r.name.toUpperCase()}</b> <span class="note">${HCLS[j.r.cls].n} · Nivel ${j.r.lvl}</span><br><span class="note">Sale solo en ${j.left} golpe${j.left>1?'s':''}</span></span><span class="r"><button class="btn sm" data-bail="${i}" ${C.money<j.bail||C.roster.length>=8?'disabled':''}>FIANZA ${fmt(j.bail)}</button></span></div>`).join('')}</div>`:''}
+    ${C.fallen.length||C.jailed.length||C.quit.length?`<h2 style="margin-top:16px">LOS QUE YA NO ESTÁN</h2><p class="note">${C.fallen.length?'Muertos: '+C.fallen.join(', ')+'<br>':''}${C.jailed.length?'Perdidos en la cárcel: '+C.jailed.join(', ')+'<br>':''}${C.quit.length?'Se fueron: '+C.quit.join(', '):''}</p>`:''}
+    ${traitGuide()}${nav('hub',null)}`}
+  else if(CUR==='recruit'){h=`<h2>RECLUTAR</h2>${M}${hdr()}<p class="note">La banda puede tener hasta 8 miembros (${C.roster.length}/8). Los candidatos cambian después de cada golpe.</p><div class="list">${C.pool.map((r,i)=>`<div class="ms" style="cursor:default;min-height:60px"><span><b>${r.name.toUpperCase()}</b> <span class="note">${HCLS[r.cls].n} · Nivel ${r.lvl}</span><br><span class="note">${HCLS[r.cls].d}</span><br>${r.traits.map(t=>`<span class="chip ${HTR[t].good?'':'bad'}" title="${HTR[t].d}">${HTR[t].n}</span>`).join('')}</span><span class="r"><button class="btn sm" data-hire="${i}" ${C.money<r.cost||C.roster.length>=8?'disabled':''}>${fmt(r.cost)}</button></span></div>`).join('')}</div>${nav('hub',null)}`}
+  else if(CUR==='market'){h=`<h2>MERCADO NEGRO</h2>${M}${hdr()}<p class="note">Todo es de un solo uso. Lo que no gastes en un golpe exitoso vuelve a tu almacén.</p><div class="list">${itemRows(false)}</div>${nav('hub',null)}`}
+  else if(CUR==='finance'){h=`<h2>FINANZAS</h2>${M}${hdr()}<div class="stat"><span>Deuda con Don Ramiro</span><span>${fmt(C.debt)}</span><span>Interés</span><span>+8% después de cada golpe</span><span>Límite antes de que pierda la paciencia</span><span style="color:#ff6b6b">${fmt(DEBT_MAX)}</span><span>Ganancia total</span><span class="money">${fmt(C.total)}</span></div>
+    <div class="row" style="justify-content:flex-start"><button class="btn sm" data-act="pay" ${C.debt&&C.money?'':'disabled'}>PAGAR $5.000</button><button class="btn sm" data-act="payall" ${C.debt&&C.money>=C.debt?'':'disabled'}>PAGAR TODO</button><button class="btn sm alt" data-act="borrow" ${C.debt+10000<=BORROW_CAP?'':'disabled'}>PEDIR $10.000</button></div>
+    <h2 style="margin-top:16px">INVERSIONES <span class="note">(permanentes)</span></h2><div class="list">${Object.entries(GINV).map(([k,u])=>`<div class="ms" style="cursor:default;min-height:48px"><span><b>${u.n.toUpperCase()}</b><br><span class="note">${u.d}</span></span><span class="r">${C.upg[k]?'<span class="chip">TUYA</span>':`<button class="btn sm" data-upg="${k}" ${C.money<u.cost?'disabled':''}>${fmt(u.cost)}</button>`}</span></div>`).join('')}</div>${nav('hub',null)}`}
+  else if(CUR==='jobs'){h=`<h2>TRABAJITOS</h2>${M}${hdr()}<div class="list"><div class="ms" style="cursor:default"><span><b>TRABAJITO DE POCA MONTA</b><br><span class="note">Gana ${fmt(1500)}–${fmt(4000)}. Sube la búsqueda y hay riesgo de que arresten a alguien.</span></span><span class="r"><button class="btn sm" data-act="small" ${C.roster.length?'':'disabled'}>HACERLO</button></span></div>
+    <div class="ms" style="cursor:default"><span><b>BAJAR EL PERFIL</b><br><span class="note">Una semana sin hacer ruido: −2 de búsqueda y la banda recupera nervios.</span></span><span class="r"><button class="btn sm" data-act="lay" ${C.money>=2500&&C.heat>0?'':'disabled'}>${fmt(2500)}</button></span></div></div>${nav('hub',null)}`}
+  else if(CUR==='settings'){h=settingsHTML()+`<div class="nav"><button class="btn alt" data-go="hub">← ESCONDITE</button></div>`}
+  open(h);box.scrollTop=0}
+function itemRows(load){const C=GC;return Object.entries(ITEMS).map(([k,it])=>`<div class="ms" style="cursor:default;min-height:54px"><span><b>${it.n.toUpperCase()}</b> <span class="note">· tienes ${C.inv[k]||0}</span><br><span class="note">${it.d}</span></span><span class="r" style="white-space:nowrap">${load?`<span class="note">LLEVAR</span> <button class="btn sm alt" data-kit="${k}" data-dv="-1" ${PICK.kit[k]>0?'':'disabled'}>−</button> <b style="display:inline-block;min-width:22px;text-align:center">${PICK.kit[k]}</b> <button class="btn sm alt" data-kit="${k}" data-dv="1" ${PICK.kit[k]<Math.min(C.inv[k]||0,it.max)?'':'disabled'}>+</button><br>`:''}<button class="btn sm" data-buy="${k}" style="margin-top:4px" ${C.money<it.cost?'disabled':''}>COMPRAR ${fmt(it.cost)}</button></span></div>`).join('')}
+function traitGuide(){return `<details style="margin-top:16px"><summary class="sumh">LISTA DE RASGOS</summary>
+  <p class="note">Cada golpe da experiencia (escapar +3, sobrevivir +1, cada baja +1, cada 2 bolsas +1). Cada nivel da +5 de vida, +2% de precisión, taladro más rápido y aguante. Al subir de nivel, un rasgo bueno puede mejorar, uno malo puede superarse o pueden ganar uno nuevo. Un golpe traumático puede empeorar un rasgo o dejar una secuela.</p>
   <div class="stat">${Object.entries(HTR).filter(([k,t])=>t.good&&!t.tier).map(([k,t])=>`<span><span class="chip">${t.n}</span> ${t.d}</span><span style="font-size:14px">↑ <span class="chip">${HTR[t.up].n}</span> ↓ <span class="chip bad">${HTR[t.down].n}</span></span>`).join('')}</div>
-  <p class="note">Mejorados: ${Object.values(HTR).filter(t=>t.tier).map(t=>`<b>${t.n}</b> (${t.d})`).join(' · ')}</p>
   <p class="note">Malos: ${Object.values(HTR).filter(t=>!t.good&&!t.trauma).map(t=>`<b>${t.n}</b> (${t.d})`).join(' · ')}</p>
-  <p class="note">Secuelas de trauma: ${Object.values(HTR).filter(t=>t.trauma).map(t=>`<b>${t.n}</b> (${t.d})`).join(' · ')}</p></details>
-  <div class="row"><button class="btn alt" data-act="menu">MENÚ</button></div>`)}
+  <p class="note">Secuelas de trauma: ${Object.values(HTR).filter(t=>t.trauma).map(t=>`<b>${t.n}</b> (${t.d})`).join(' · ')}</p></details>`}
+function settingsHTML(){const fs=!!document.fullscreenElement,yn=v=>v?'SÍ':'NO';
+  return `<h2>AJUSTES</h2>
+  <div class="setrow"><span><b>Pantalla completa</b><br><span class="note">Ahora: ${fs?'pantalla completa':'ventana'}. También con F11.</span></span><button class="btn sm" data-act="fs">${fs?'SALIR':'ACTIVAR'}</button></div>
+  <div class="setrow"><span><b>Pantalla completa al empezar</b><br><span class="note">Entra sola en pantalla completa con el primer clic.</span></span><button class="btn sm ${CFG.fsAuto?'':'alt'}" data-cfg="fsAuto">${yn(CFG.fsAuto)}</button></div>
+  <div class="setrow"><span><b>Volumen</b><br><span class="note">${muted?'Silenciado':CFG.vol+'%'}</span></span><span style="white-space:nowrap"><button class="btn sm alt" data-vol="-10">−</button> <b style="display:inline-block;min-width:44px;text-align:center">${CFG.vol}%</b> <button class="btn sm alt" data-vol="10">+</button> <button class="btn sm ${muted?'':'alt'}" data-cfg="mute">${muted?'SIN SONIDO':'SONIDO'}</button></span></div>
+  <div class="setrow"><span><b>Temblor de pantalla</b><br><span class="note">Explosiones, disparos y golpes.</span></span><button class="btn sm ${CFG.shake?'':'alt'}" data-cfg="shake">${yn(CFG.shake)}</button></div>
+  <div class="setrow"><span><b>Velocidad inicial (mando táctico)</b></span><button class="btn sm alt" data-cfg="speed">x${CFG.speed}</button></div>
+  <div class="setrow"><span><b>Tiempo Halcón al empezar (modo líder)</b><br><span class="note">El tiempo casi se detiene cuando no te mueves.</span></span><button class="btn sm ${CFG.halcon?'':'alt'}" data-cfg="halcon">${yn(CFG.halcon)}</button></div>
+  <div class="setrow"><span><b>Borrar la carrera</b><br><span class="note">Empiezas de cero con una banda nueva.</span></span><button class="btn sm alt" data-act="reset">BORRAR</button></div>`}
+function openSettings(back){CFG_BACK=back;if(back==='hub'){CUR='settings';hq();return}open(settingsHTML()+`<div class="nav"><button class="btn alt" data-act="cfg-back">← VOLVER</button></div>`)}
+function startHeist(mode){goHeist();if(!MS)return;newGame(mode);S.speed=CFG.speed;S.halcon=CFG.halcon;close();CUR='hub'}
+function title(){S=null;CUR='hub';open(`<div class="title">EL GRAN<br>GOLPE</div><div class="sub" style="color:#ffcd75">UN BANCO · UN RELOJ · UNA BANDA AL BORDE</div>
+  <p>Eres el cerebro de una banda de ladrones. Entra al banco, abre la bóveda, carga las bolsas en la camioneta y escapa antes de que llegue la policía.</p>
+  <p class="note">Cada miembro tiene <b>nervios</b>. Las balas, la alarma, las sirenas y ver caer a un compañero los desgastan. Con los nervios rotos fallan disparos, desobedecen, se paralizan, se rinden, colapsan o huyen.</p>
+  <div class="tmenu">${GC&&GC.roster?'<button class="btn" data-act="hq">CONTINUAR CARRERA</button><button class="btn alt" data-act="reset">NUEVA CARRERA</button>':'<button class="btn" data-act="newcar">EMPEZAR</button>'}<button class="btn alt" data-act="cfg-title">AJUSTES</button><button class="btn alt" data-act="fs">PANTALLA COMPLETA</button></div>`)}
+function pauseMenu(){if(!S||S.over)return;open(`<h2>PAUSA</h2><p>${S.M.n} · ${fmt(S.bags*BAG+S.cashTaken)} en la camioneta</p><div class="tmenu"><button class="btn" data-act="go">SEGUIR</button><button class="btn alt" data-act="cfg-pause">AJUSTES</button><button class="btn alt" data-act="abort">ABORTAR (HUIR YA)</button></div>`)}
 const policeTime=i=>Math.max(110,BANKINFO[i].police-GC.heat*8+(GC.upg.blindada?15:0));
 function goHeist(){const C=GC,b=PICK.b,sq=C.roster.filter(r=>PICK.sq.has(r.id)).slice(0,4);if(!sq.length)return;sq.sort((a,b2)=>(b2.cls==='cerebro')-(a.cls==='cerebro'));
   const kit={};for(const k in ITEMS){kit[k]=Math.min(PICK.kit[k]||0,C.inv[k]||0);C.inv[k]-=kit[k]}storeGC();
   BAG=BANKINFO[b].bag;CASH=BANKINFO[b].cash;
   const squad=sq.map((r,i)=>crewDef(r,i));for(let f=0;f<kit.flash;f++)squad[f%squad.length].fl++;for(let v=0;v<Math.min(kit.chaleco,squad.length);v++)squad[v].armor=true;
-  MS={n:BANKINFO[b].n,type:'heist',bank:b,diff:BANKINFO[b].diff,police:policeTime(b)+(kit.chofer?25:0),par:BANKINFO[b].par,map:BANKS[b],squad,feat:{},kit};briefing()}
+  MS={n:BANKINFO[b].n,type:'heist',bank:b,diff:BANKINFO[b].diff,police:policeTime(b)+(kit.chofer?25:0),par:BANKINFO[b].par,map:BANKS[b],squad,feat:{},kit}}
 function briefing(){S=null;newGame('tactical');const bi=BANKINFO[MS.bank];const kitTxt=Object.entries(MS.kit).filter(([k,n])=>n>0).map(([k,n])=>n+'× '+ITEMS[k].n).join(', ')||'nada';
   open(`<h2>${bi.n.toUpperCase()}</h2><p>${bi.d} La policía llega en <b>${Math.floor(MS.police/60)}:${String(MS.police%60).padStart(2,'0')}</b>; si suena la alarma, en 40 segundos.</p>
   <ul><li><b>Bóveda</b>: alguien tiene que quedarse junto a la puerta de acero. El <b>Técnico</b> taladra rápido; <b>Explosivos</b> la vuela en 3 s, pero suena la alarma.</li>
@@ -973,7 +1032,6 @@ function briefing(){S=null;newGame('tactical');const bi=BANKINFO[MS.bank];const 
   <p class="note"><b>Modo Líder</b>: controlas al primero de la banda (clic para caminar, clic derecho para dar órdenes, Tiempo Halcón). <b>Mando táctico</b>: planificas rutas y usas los botones BÓVEDA, BOTÍN y PANEL.</p>
   <p class="note"><b>Llevas:</b> ${kitTxt}. Si el golpe fracasa, pierdes todo lo que llevaste. Lo que no se use vuelve contigo si escapan.</p>
   <div class="row"><button class="btn alt" data-act="hq-cancel">VOLVER</button><button class="btn" data-act="leader">MODO LÍDER</button><button class="btn" data-act="go">MANDO TÁCTICO</button></div>`)}
-function pauseMenu(){if(!S||S.over)return;open(`<h2>PAUSA</h2><p>${S.M.n} · ${fmt(S.bags*BAG+S.cashTaken)} en la camioneta</p><div class="row"><button class="btn alt" data-act="abort">ABORTAR (huir ya)</button><button class="btn" data-act="go">SEGUIR</button></div>`)}
 function showResult(){if(S.processed)return;S.processed=true;const C=GC,ops=S.ops,win=S.win,money=S.money||0;const news=[],kitBack={};
   const lost=ops.filter(o=>!o.alive||o.arrested||o.fled).length,st=win?1+(lost===0?1:0)+(S.bags===totalBags()&&S.bags>0?1:0):0;
   C.jail=C.jail||[];for(const j of C.jail.slice()){j.left--;if(j.left<=0){C.jail.splice(C.jail.indexOf(j),1);if(C.roster.length<8){j.r.nerve=55;C.roster.push(j.r);news.push(`<span style="color:#a7f070">🔓 ${j.r.name} cumplió su condena y volvió a la banda.</span>`)}else news.push(`${j.r.name} salió de la cárcel, pero no hay lugar en la banda.`)}}
@@ -1003,6 +1061,10 @@ function showResult(){if(S.processed)return;S.processed=true;const C=GC,ops=S.op
   ${ledger}${news.length?`<p>${news.join('<br>')}</p>`:''}
   <div class="row"><button class="btn" data-act="hq">AL ESCONDITE</button></div>`)}
 modal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;audioInit();sfx('click');const d=b.dataset;
+  if(d.go!==undefined){CUR=d.go;hq();return}
+  if(d.start!==undefined){startHeist(d.start);return}
+  if(d.cfg!==undefined){const k=d.cfg;if(k==='mute')muted=!muted;else if(k==='speed')CFG.speed=CFG.speed===1?2:1;else CFG[k]=!CFG[k];storeCFG();applyCFG();CFG_BACK==='hub'&&!S?hq():openSettings(CFG_BACK);return}
+  if(d.vol!==undefined){CFG.vol=clamp(CFG.vol+(+d.vol),0,100);storeCFG();applyCFG();CFG_BACK==='hub'&&!S?hq():openSettings(CFG_BACK);return}
   if(d.b!==undefined){PICK.b=+d.b;hq();return}
   if(d.r!==undefined){if(PICK.sq.has(d.r))PICK.sq.delete(d.r);else if(PICK.sq.size<4)PICK.sq.add(d.r);else sfx('deny');hq();return}
   if(d.hire!==undefined){const r=GC.pool[+d.hire];if(GC.money>=r.cost&&GC.roster.length<8){GC.money-=r.cost;const nr={...r,cost:0};if(R()<.35&&GC.roster.length){const p=pick(GC.roster.filter(q=>!q.bond));if(p)bondPair(nr,p)}GC.roster.push(nr);GC.pool[+d.hire]=mkCrook();if(PICK.sq.size<4)PICK.sq.add(nr.id);storeGC();sfx('cash')}hq(`${r.name} se une a la banda.`);return}
@@ -1011,20 +1073,22 @@ modal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.d
   if(d.buy!==undefined){const it=ITEMS[d.buy];if(GC.money>=it.cost){GC.money-=it.cost;GC.inv[d.buy]=(GC.inv[d.buy]||0)+1;if((PICK.kit[d.buy]||0)<it.max)PICK.kit[d.buy]=(PICK.kit[d.buy]||0)+1;storeGC();sfx('cash')}hq();return}
   if(d.upg!==undefined){const u=GINV[d.upg];if(GC.money>=u.cost){GC.money-=u.cost;GC.upg[d.upg]=true;storeGC();sfx('cash')}hq(`Compraste: ${u.n}.`);return}
   const a=d.act;
-  if(a==='hq')hq();
+  if(a==='hq'){CUR='hub';hq()}
+  else if(a==='cfg-title')openSettings('title');else if(a==='cfg-pause')openSettings('pause');
+  else if(a==='cfg-back'){if(CFG_BACK==='pause')pauseMenu();else title()}
   else if(a==='hq-cancel'){for(const k in MS.kit)GC.inv[k]=(GC.inv[k]||0)+MS.kit[k];storeGC();hq()}
   else if(a==='pay'){const v=Math.min(5000,GC.money,GC.debt);GC.money-=v;GC.debt-=v;storeGC();hq(`Pagaste ${fmt(v)} a Don Ramiro.`)}
   else if(a==='payall'){const v=Math.min(GC.money,GC.debt);GC.money-=v;GC.debt-=v;storeGC();hq(GC.debt?`Pagaste ${fmt(v)}.`:'<b style="color:#a7f070">¡Deuda saldada! Don Ramiro ya no te busca.</b>')}
   else if(a==='borrow'){GC.money+=10000;GC.debt+=10000;storeGC();hq('Don Ramiro te presta '+fmt(10000)+'. Sonríe demasiado.')}
   else if(a==='small'){const g=1500+Math.round(R()*25)*100;GC.money+=g;GC.heat=Math.min(8,GC.heat+(GC.upg.contacto?.5:1));let m=`Trabajito hecho: <b style="color:#a7f070">+${fmt(g)}</b>. La búsqueda sube.`;if(GC.roster.length&&R()<.12){const r=pick(GC.roster);GC.roster.splice(GC.roster.indexOf(r),1);const p=GC.roster.find(q=>q.bond===r.id);if(p){p.bond=null;p.bondType=''}const nn=[];jailUp(r,nn,'cayó preso en el trabajito');m+='<br>'+nn[0]}else if(GC.roster.length){const r=pick(GC.roster);r.nerve=Math.max(0,r.nerve-10)}storeGC();hq(m)}
-  else if(a==='lay'){GC.money-=2500;GC.heat=Math.max(0,GC.heat-2);for(const r of GC.roster)r.nerve=Math.min(100,r.nerve+20);storeGC();hq('La banda se quedó tranquila una semana.')}else if(a==='newcar'){newCareer();PICK={b:0,sq:null,kit:null};hq('Nueva banda: cuatro ladrones, '+fmt(GC.money)+' y una deuda de '+fmt(GC.debt)+' con Don Ramiro. Hay que salir a flote.')}
+  else if(a==='lay'){GC.money-=2500;GC.heat=Math.max(0,GC.heat-2);for(const r of GC.roster)r.nerve=Math.min(100,r.nerve+20);storeGC();hq('La banda se quedó tranquila una semana.')}else if(a==='newcar'){CUR='hub';newCareer();PICK={b:0,sq:null,kit:null};hq('Nueva banda: cuatro ladrones, '+fmt(GC.money)+' y una deuda de '+fmt(GC.debt)+' con Don Ramiro. Hay que salir a flote.')}
   else if(a==='reset')open(`<h2>¿NUEVA CARRERA?</h2><p>Perderás la banda, el dinero y el equipo.</p><div class="row"><button class="btn alt" data-act="menu">CANCELAR</button><button class="btn" data-act="newcar">EMPEZAR DE CERO</button></div>`);
   else if(a==='go-heist')goHeist();
   else if(a==='leader'){newGame('leader');close()}
   else if(a==='go')close();
   else if(a==='abort'){close();finishHeist(S.ops.some(o=>able(o)&&inVan(o)))}
   else if(a==='menu')title();
-  else if(a==='fs')toggleFS()});
+  else if(a==='fs'){toggleFS();setTimeout(()=>{if(modal.classList.contains('on')&&box.querySelector('.setrow'))(CFG_BACK==='hub'&&!S?hq():openSettings(CFG_BACK))},300)}});
 
 /* ================= LOOP ================= */
 let last=performance.now(),acc=0;
