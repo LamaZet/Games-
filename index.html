@@ -136,7 +136,7 @@ const IC={
 
 /* ================= DATA ================= */
 const BANKS=[[",,,,,,,,,,,,,,Z,,,,,,,,,,,,,,,,,", ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Z", ",,,#####W####W#########W#####,,,", ",,,#C:::::::::::::#_________#,,,", ",,,W::v:::::::v:g:#_________#,,,", "GG,#::::::::::::::D_TTv_____#,,,", "GG,D::::::v:::::::#_________#,,,", "GG,#::::::::::::::#______TT_#,,,", ",,,#::::v:::::::::#_________#,,,", ",SSW::::::::::::::###########,,,", ",SS#TTTTTTTTTTTT::#.........#,,Z", ",,,#.$..$..$..$...D.......A.#,,,", ",,,#..v.....v.....#..TT.g.K.#,,,", ",,,###########D####.........#,,,", ",,,#.............C#####D#####,,,", ",,,#..............D.........#,,,", ",,,######V#########.........#,,,", ",,,#.L.L...L.L.#K.#.........D,,,", ",,,#.L.........#.K#.........#,,,", ",,,###################W######,,Z", ",,,,,,,,,,,,,,Z,,,,,,,,,,,,,,,,,"],[",,,,,,,,,,,,,,,,,Z,,,,,,,,,,,,,,", "Z,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,", ",,,#####W#########W####W#####,,,", ",,,#_________#:::::::::::::C#,,,", ",,,#__v______#:g:v:::::::v::W,,,", ",,,#_____vTT_D:::::v::::::::#,GG", ",,,#__m______#:::::::v::::::D,GG", ",,,#_TT______#::::::::::::::#,GG", ",,,#_________#:::::::::v::::#,,,", ",,,###########::::::::::::::WSS,", "Z,,#.........#::TTTTTTTTTTTT#SS,", ",,,#.A.......D.$.$..$..$..$.#,,,", ",,,#.K.g.TT..#.....v.....v..#,,,", ",,,#.........####D###########,,,", ",,,#####D#####C.......m.....#,,,", ",,,#C........D..............#,,,", ",,,#.........#########V######,,,", ",,,D.........#.K#.L.L...L.L.#,,,", ",,,#.........#K.#.L.......L.#,,,", "Z,,######W###################,,,", ",,,,,,,,,,,,,,,,,Z,,,,,,,,,,,,,,"],[",,,,,,,,,,,,,,Z,,,,,,,,,,,,,,,,,", ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,Z", ",,,#####W####W#########W#####,,,", ",,,#C:::::::::::::#_________#,,,", ",,,W::v:::::::v:g:#______v__#,,,", "GG,#::::::::v:::::D_TTv_____#,,,", "GG,D::::::v:::::::#______m__#,,,", "GG,#:m::::::::::::#______TT_#,,,", ",,,#::::v:::::::::#_________#,,,", ",SSW::::::::::::::###########,,,", ",SS#TTTTTTTTTTTT::#.........#,,Z", ",,,#.$..$..$..$.$.D.......A.#,,,", ",,,#..v.....v.....#..TT.g.K.#,,,", ",,,###########D####.........#,,,", ",,,#.....m.......C#####D#####,,,", ",,,#..............D........C#,,,", ",,,######V#########......H..#,,,", ",,,#.L.L...L.L.#K.#..m......D,,,", ",,,#.L.L.L...L.#.K#.........#,,,", ",,,###################W######,,Z", ",,,,,,,,,,,,,,Z,,,,,,,,,,,,,,,,,"]];
-const BANKINFO=[{n:'Banco Coral',diff:1,police:200,par:110,d:'Sucursal de barrio. Pocos guardias, bóveda pequeña.'},{n:'Caja del Malecón',diff:2,police:175,par:120,d:'Guardias armados y más cámaras. Más bolsas.'},{n:'Reserva Atlántica',diff:3,police:150,par:130,d:'Seguridad pesada. La bóveda más grande de la isla.'}];
+const BANKINFO=[{n:'Banco Coral',diff:1,police:200,par:110,bag:4500,cash:600,d:'Sucursal de barrio. Pocos guardias, bóveda pequeña.'},{n:'Caja del Malecón',diff:2,police:175,par:120,bag:9000,cash:900,d:'Guardias armados y más cámaras. Más bolsas.'},{n:'Reserva Atlántica',diff:3,police:150,par:130,bag:15000,cash:1400,d:'Seguridad pesada. La bóveda más grande de la isla.'}];
 const MISSIONS=[];
 const W={
   m4:{dmg:14,cd:.18,acc:.4,range:14,noise:13,snd:'ak'},
@@ -173,17 +173,26 @@ const HTR={frio:{n:'Sangre fría',d:'pierde menos nervios',good:1},veterano:{n:'
 const BONDS=['hermanos','pareja','viejos amigos','primos'];
 const GNAMES=['Flaco','Jefa','Chispa','Tuerca','Gato','Mudo','Dientes','Profe','Nena','Bala','Sombrero','Toto','Pelusa','Moncho','Pecas','Zurdo','Calvo','Ojitos','Tremenda','Lagarto','Polvo','Nube','Guapo','Duende','Cuervo','Mosca','Rata','Pirata','Lola','Tito'];
 const SQCOL=['#ffcd75','#ef7d57','#c86ad6','#73eff7'];
-const GUPG={chalecos:{n:'Chalecos',d:'La banda recibe 18% menos daño.',cost:40000},taladro:{n:'Taladro industrial',d:'Taladran la bóveda 40% más rápido.',cost:35000},inhibidor:{n:'Inhibidor',d:'Las cámaras no funcionan desde el inicio.',cost:30000},furgon:{n:'Conductor experto',d:'La policía tarda 25 s más en llegar.',cost:45000},calmantes:{n:'Calmantes',d:'La banda pierde 25% menos nervios.',cost:30000},flash:{n:'Más flashes',d:'+1 flash por miembro.',cost:25000}};
-const BAG=25000,CASH=3000;
-const fmt=n=>'$'+Math.round(n).toLocaleString('es-ES');
-let GC=null;try{GC=JSON.parse(localStorage.getItem('golpe-v1'))}catch(e){}
-const storeGC=()=>{try{localStorage.setItem('golpe-v1',JSON.stringify(GC))}catch(e){}};
+const ITEMS={
+  broca:{n:'Broca térmica',d:'Sin ella, taladrar la bóveda tarda 3 veces más.',cost:2000,max:1},
+  c4:{n:'Carga de C4',d:'Explosivos abre la bóveda en 3 s (suena la alarma).',cost:4500,max:1},
+  flash:{n:'Flash',d:'Granada aturdidora. Se reparten entre la banda.',cost:700,max:8},
+  chaleco:{n:'Chaleco',d:'-18% de daño para quien lo lleve. Se gasta en el golpe.',cost:1500,max:4},
+  botiquin:{n:'Botiquín',d:'Cura 50 de vida sola cuando alguien baja de 35%.',cost:1200,max:4},
+  calmante:{n:'Calmantes',d:'+35 de nervios cuando alguien está por quebrarse.',cost:900,max:4},
+  inhibidor:{n:'Inhibidor',d:'Apaga las cámaras durante el golpe.',cost:3000,max:1},
+  chofer:{n:'Chofer experto',d:'La policía tarda 25 s más en llegar.',cost:4000,max:1}};
+const GINV={blindada:{n:'Camioneta blindada',d:'+15 s antes de que llegue la policía, en todos los golpes.',cost:60000},contacto:{n:'Contacto en la policía',d:'La búsqueda sube la mitad de rápido.',cost:90000},lavanderia:{n:'Lavandería de dinero',d:'Cada miembro cobra 8% del botín en vez de 12%.',cost:140000}};
+let BAG=6000,CASH=800;const RENT=2000,RATE=.08,DEBT_MAX=80000,BORROW_CAP=60000;
+const fmt=n=>'$'+String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+let GC=null;try{GC=JSON.parse(localStorage.getItem('golpe-v2'))}catch(e){}
+const storeGC=()=>{try{localStorage.setItem('golpe-v2',JSON.stringify(GC))}catch(e){}};
 function mkCrook(cls){const used=new Set(GC?GC.roster.concat(GC.pool).map(r=>r.name):[]);const name=pick(GNAMES.filter(n=>!used.has(n)))||pick(GNAMES);const good=Object.keys(HTR).filter(k=>HTR[k].good),bad=Object.keys(HTR).filter(k=>!HTR[k].good);const tr=[pick(good)];if(R()<.5)tr.push(pick(bad));
-  return{id:Math.random().toString(36).slice(2,9),name,cls:cls||pick(Object.keys(HCLS)),traits:tr,nerve:100,heists:0,kills:0,bond:null,bondType:'',cost:12000+(R()*14|0)*1000+(tr.length>1?-4000:5000)}}
+  return{id:Math.random().toString(36).slice(2,9),name,cls:cls||pick(Object.keys(HCLS)),traits:tr,nerve:100,heists:0,kills:0,bond:null,bondType:'',cost:6000+(R()*7|0)*1000+(tr.length>1?-2000:2000)}}
 function bondPair(a,b){const t=pick(BONDS);a.bond=b.id;b.bond=a.id;a.bondType=b.bondType=t}
-function newCareer(){const best=GC&&GC.best||0;GC={money:20000,heat:0,done:0,total:0,roster:[],pool:[],upg:{},fallen:[],jailed:[],quit:[],unlocked:1,best};
-  for(const c of['cerebro','tecnico','musculo','tirador','explosivos'])GC.roster.push(mkCrook(c));bondPair(GC.roster[1],GC.roster[2]);for(let i=0;i<3;i++)GC.pool.push(mkCrook());storeGC()}
-function crewDef(r,i){const C=HCLS[r.cls],has=k=>r.traits.includes(k);return{n:r.name,role:C.n,cls:r.cls,w:C.w,col:SQCOL[i],fl:C.fl+(GC.upg.flash?1:0),spd:C.spd*(has('rapido')?1.12:1),hp:C.hp+(has('duro')?25:0),turn:C.turn,breacher:C.breacher,reactK:1,accK:1+(has('veterano')?.1:0)-(has('torpe')?.1:0),armor:!!GC.upg.chalecos,rid:r.id,nerve:r.nerve,traits:r.traits,bond:r.bond,bondType:r.bondType,aura:C.aura,drill:C.drill||1,tech:C.tech,intim:C.intim,c4:C.c4}}
+function newCareer(){const best=GC&&GC.best||0;GC={money:9000,debt:25000,heat:0,done:0,total:0,roster:[],pool:[],upg:{},inv:{broca:1,c4:0,flash:3,chaleco:0,botiquin:1,calmante:1,inhibidor:0,chofer:0},fallen:[],jailed:[],quit:[],unlocked:1,best,ledger:[]};
+  for(const c of['cerebro','tecnico','musculo','tirador'])GC.roster.push(mkCrook(c));bondPair(GC.roster[1],GC.roster[2]);for(let i=0;i<3;i++)GC.pool.push(mkCrook());GC.pool[0].cls='explosivos';storeGC()}
+function crewDef(r,i){const C=HCLS[r.cls],has=k=>r.traits.includes(k);return{n:r.name,role:C.n,cls:r.cls,w:C.w,col:SQCOL[i],fl:0,spd:C.spd*(has('rapido')?1.12:1),hp:C.hp+(has('duro')?25:0),turn:C.turn,breacher:C.breacher,reactK:1,accK:1+(has('veterano')?.1:0)-(has('torpe')?.1:0),armor:false,rid:r.id,nerve:r.nerve,traits:r.traits,bond:r.bond,bondType:r.bondType,aura:C.aura,drill:C.drill||1,tech:C.tech,intim:C.intim,c4:C.c4}}
 
 /* ================= STATE ================= */
 let S=null,MI=0,MS=null,grid,flo,doors,staticLayer=null,BS={c:0,sq:null};
@@ -261,12 +270,12 @@ function newGame(mode='tactical'){const P=parse(MS.map);buildStatic();const M=MS
   const civs=P.civs.map(([x,y])=>({x:x+.5,y:y+.5,st:'calm',t:0,path:[],col:pick(['#e8ecef','#ef7d57','#73eff7','#ffcd75','#a7f070','#c86ad6']),ang:R()*7,id:R()}));
   const vd=P.vaultAt?doors.get(P.vaultAt[1]*GW+P.vaultAt[0]):null;let work=null;if(vd){const sides=vd.hz?[[vd.x,vd.y-1],[vd.x,vd.y+1]]:[[vd.x-1,vd.y],[vd.x+1,vd.y]];work=sides.find(([x,y])=>!P.loot.some(l=>hyp(l.x-x-.5,l.y-y-.5)<4))||sides[0]}
   S={M,ops,ens,hos:[],bomb:null,cams:P.cams,bombT:0,t:0,time:0,paused:true,started:false,over:false,sel:0,tool:'mover',speed:1,slow:0,shake:0,white:0,parts:[],tracers:[],flashes:[],floats:[],log:[],kills:0,execWarned:new Set(),decals:[],muzzle:[],clears:[],pings:[],bullets:[],mode,feat:{drone:false,cams:false,hack:false},dark:0,darkUsed:true,hacks:0,halcon:true,ts:1,joy:null,touch,feed:false,
-    civs,van:new Set(P.van.map(([x,y])=>y*GW+x)),vanT:P.van,zs:P.zs,loot:P.loot,cash:P.cash,panel:P.panel,vault:{dr:vd,prog:0,c4:0,open:false,work},policeT:MS.police,police:false,wave:0,waveT:0,alarm:false,bags:0,cashTaken:0,camT:0,camOff:!!GC.upg.inhibidor,sirenT:0,lostBags:0,tick:0};
+    civs,van:new Set(P.van.map(([x,y])=>y*GW+x)),vanT:P.van,zs:P.zs,loot:P.loot,cash:P.cash,panel:P.panel,vault:{dr:vd,prog:0,c4:0,open:false,work},policeT:MS.police,police:false,wave:0,waveT:0,alarm:false,bags:0,cashTaken:0,camT:0,camOff:!!MS.kit.inhibidor,kit:{...MS.kit},brocaUsed:false,usedLog:{},sirenT:0,lostBags:0,tick:0};
   if(mode==='leader'){const L=ops[0];L.player=true;L.trail=L.ang;for(const o of ops)if(!o.player)o.order={k:'follow'};S.started=true;S.paused=false;radio('CHOFER','Motor encendido. Tienen '+Math.floor(MS.police/60)+':'+String(MS.police%60).padStart(2,'0')+' antes de que llegue la policía.','#ffcd75')}
   else radio('CHOFER','Estamos frente al banco. Planifiquen y den la orden.','#ffcd75')}
 const able=o=>o.alive&&!o.gone&&!o.broken;
 const tr=(o,k)=>o.d.traits&&o.d.traits.includes(k);
-function stress(o,amt){if(!o.alive||o.gone)return;let k=1;if(tr(o,'frio'))k*=.6;if(tr(o,'nervioso'))k*=1.4;if(GC.upg.calmantes)k*=.75;if(o.player)k*=.7;o.nerve=clamp(o.nerve-amt*k,0,100);nerveState(o)}
+function stress(o,amt){if(!o.alive||o.gone)return;let k=1;if(tr(o,'frio'))k*=.6;if(tr(o,'nervioso'))k*=1.4;if(o.player)k*=.7;o.nerve=clamp(o.nerve-amt*k,0,100);nerveState(o)}
 function calm(o,amt){if(!o.alive||o.gone)return;o.nerve=clamp(o.nerve+amt,0,100);nerveState(o)}
 function nerveState(o){const ns=o.nerve<15?3:o.nerve<35?2:o.nerve<60?1:0;if(ns>o.ns){if(ns===1){say(o,'...ESTO SE PUSO FEO','#ffcd75')}else if(ns===2){say(o,'¡NO PUEDO, NO PUEDO!','#ef7d57');radio(o.n,pick(['¡Esto no era el plan!','¡Nos van a matar a todos!','¡Quiero salir de aquí!']),o.col);sfx('break')}else{say(o,'¡ME VOY A QUEBRAR!','#ff4d6d')}}o.ns=ns}
 const nerveK=o=>o.nerve<15?.45:o.nerve<35?.62:o.nerve<60?.82:1;
@@ -296,7 +305,9 @@ function heistUpdate(dt){S.tick+=dt;
   if(S.panel&&!S.panel.off){const w=S.ops.filter(o=>able(o)&&!o.path.length&&o.busy<=0&&hyp(o.x-S.panel.x,o.y-S.panel.y)<1.35);for(const o of w){S.panel.prog+=dt*(o.d.tech?1:.4);o.busyTxt='PANEL'}if(w.length&&S.tick%.5<dt)sfx('click');if(S.panel.prog>=4){S.panel.off=true;S.camT=0;sfx('hack');radio(w[0]?w[0].n:'BANDA','Seguridad cortada: ni cámaras ni alarma.',w[0]?w[0].col:'#ffcd75');crewAll(o=>calm(o,5))}}
   /* vault */
   const V=S.vault;if(V.dr&&!V.open){const vx=V.dr.x+.5,vy=V.dr.y+.5,w=S.ops.filter(o=>able(o)&&!o.path.length&&o.busy<=0&&hyp(o.x-vx,o.y-vy)<1.45);
-    for(const o of w){if(o.d.c4){V.c4+=dt;if(V.c4>=3){openVault(true,o);break}}else{V.prog+=dt*(o.d.drill||1)*(GC.upg.taladro?1.4:1)}}
+    if(w.length&&!S.brocaUsed&&S.kit.broca>0&&!w.every(o=>o.d.c4&&S.kit.c4>0)){S.kit.broca--;S.brocaUsed=true;useItem('broca');S.floats.push({x:vx,y:vy-.8,s:'BROCA TÉRMICA',col:'#ffcd75',t:1.4})}
+    if(w.length&&!S.brocaUsed&&!S.noBrocaSaid&&!w.every(o=>o.d.c4&&S.kit.c4>0)){S.noBrocaSaid=1;radio(w[0].n,'¡Sin broca térmica esto va a tardar una eternidad!',w[0].col)}
+    for(const o of w){if(o.d.c4&&S.kit.c4>0){V.c4+=dt;if(V.c4>=3){S.kit.c4--;useItem('c4');openVault(true,o);break}}else{V.prog+=dt*(o.d.drill||1)*(S.brocaUsed?1:.33)}}
     if(w.length&&!V.open){if(S.tick%.3<dt)sfx('drill');if(R()<.4)S.parts.push({x:vx+(R()-.5)*.6,y:vy+(R()-.5)*.6,vx:(R()-.5)*3,vy:(R()-.5)*3,t:.25,c:'#ffcd75',drag:4,glow:1});noiseAt(vx,vy,3)}
     if(V.prog>=40)openVault(false,w[0])}
   /* loot, cash, delivery */
@@ -304,6 +315,10 @@ function heistUpdate(dt){S.tick+=dt;
     if(!o.bag)for(const l of S.loot){if(!l.taken&&hyp(l.x-o.x,l.y-o.y)<.8){l.taken=true;o.bag=true;sfx('bag');say(o,'¡TENGO UNA BOLSA!','#a7f070');break}}
     for(const k of S.cash)if(!k.taken&&hyp(k.x-o.x,k.y-o.y)<1){k.taken=true;S.cashTaken+=CASH;sfx('cash');S.floats.push({x:k.x,y:k.y-.5,s:'+'+fmt(CASH),col:'#a7f070',t:1.2})}
     if(o.bag&&inVan(o)){o.bag=false;S.bags++;sfx('cash');S.floats.push({x:o.x,y:o.y-.8,s:'+'+fmt(BAG),col:'#a7f070',t:1.5});crewAll(q=>calm(q,6));if(S.bags===totalBags())radio('CHOFER','¡Todo el botín está en la camioneta! ¡HUYAN!','#a7f070')}}
+  /* consumables */
+  for(const o of S.ops){if(!able(o))continue;
+    if(o.hp<o.max*.35&&S.kit.botiquin>0){S.kit.botiquin--;useItem('botiquin');o.hp=Math.min(o.max,o.hp+50);sfx('secure');say(o,'+50 BOTIQUÍN','#a7f070')}
+    if(o.nerve<22&&S.kit.calmante>0){S.kit.calmante--;useItem('calmante');calm(o,35);say(o,'CALMANTES...','#73eff7')}}
   /* broken states */
   for(const o of S.ops){if(!o.alive||o.gone)continue;
     if(!o.broken&&!o.player&&o.nerve<15){o.bkT=(o.bkT||0)-dt;if(o.bkT<=0){o.bkT=1.5;if(R()<.33*(tr(o,'cobarde')?1.6:1))breakdown(o)}}
@@ -326,6 +341,7 @@ function heistUpdate(dt){S.tick+=dt;
       else if(c.goal==='exit'&&c.y!==undefined&&S.zs.some(([x,y])=>hyp(x+.5-c.x,y+.5-c.y)<.8)){c.st='fled';if(!S.police&&!S.alarm){S.policeT=Math.max(5,S.policeT-15);radio('CHOFER','Un testigo escapó. La policía llegará antes.','#ffcd75')}}}}
   /* fail check */
   const remain=S.ops.filter(o=>o.alive&&!o.gone);if(!remain.length||remain.every(o=>o.broken==='surr'||o.broken==='collapse')&&S.police){S.allBrokenT=(S.allBrokenT||0)+dt;if(!remain.length||S.allBrokenT>6)finishHeist(false)}else S.allBrokenT=0}
+function useItem(k){S.usedLog[k]=(S.usedLog[k]||0)+1}
 const totalBags=()=>S.loot.filter(l=>!l.dropped).length;
 function openVault(c4,o){const V=S.vault;V.open=true;V.dr.state=c4?2:1;V.dr.locked=false;
   if(c4){sfx('breach');S.shake=8;S.white=.5;noiseAt(V.dr.x+.5,V.dr.y+.5,18);triggerAlarm('La explosión activó la alarma');for(let k=0;k<40;k++){const a=R()*7,sp=2+R()*7;S.parts.push({x:V.dr.x+.5,y:V.dr.y+.5,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,t:.6,c:pick(['#ffcd75','#ef7d57','#94b0c2']),drag:4,stay:1})}}
@@ -430,7 +446,7 @@ function breach(dr,o){if(dr.state===2)return;dr.state=2;sfx('breach');S.shake=Ma
   for(let k=0;k<12;k++)S.parts.push({x:dr.x+.5+(R()-.5),y:dr.y+.5+(R()-.5),vx:(R()-.5)*1.5,vy:(R()-.5)*1.5,t:.8+R()*.6,c:'#b8b2a4',drag:2,smoke:1});
   for(const e of S.ens)if(e.alive&&hyp(e.x-dr.x-.5,e.y-dr.y-.5)<3.2&&los(e.x,e.y,dr.x+.5,dr.y+.5)){e.stun=Math.max(e.stun,1.3);alertE(e)}
   S.slow=Math.max(S.slow,.55)}
-function throwFlash(o,tx,ty){if(o.fl<=0)return;o.fl--;const a=Math.atan2(ty-o.y,tx-o.x),d=Math.min(8,hyp(tx-o.x,ty-o.y));let ex=o.x,ey=o.y;for(let s=.1;s<=d;s+=.1){const X=o.x+Math.cos(a)*s,Y=o.y+Math.sin(a)*s;if(blocksSight(Math.floor(X),Math.floor(Y))||!passable(Math.floor(X),Math.floor(Y)))break;ex=X;ey=Y}
+function throwFlash(o,tx,ty){if(o.fl<=0)return;o.fl--;useItem('flash');const a=Math.atan2(ty-o.y,tx-o.x),d=Math.min(8,hyp(tx-o.x,ty-o.y));let ex=o.x,ey=o.y;for(let s=.1;s<=d;s+=.1){const X=o.x+Math.cos(a)*s,Y=o.y+Math.sin(a)*s;if(blocksSight(Math.floor(X),Math.floor(Y))||!passable(Math.floor(X),Math.floor(Y)))break;ex=X;ey=Y}
   S.flashes.push({sx:o.x,sy:o.y,x:o.x,y:o.y,ex,ey,t:0,dur:.25+hyp(ex-o.x,ey-o.y)/14,fuse:.3,spin:0});say(o,'¡FLASH!');sfx('throw')}
 function explodeFlash(f){sfx('flash');S.shake=Math.max(S.shake,4);noiseAt(f.x,f.y,14);let hitAny=false;
   for(const e of S.ens){if(!e.alive)continue;const d=hyp(e.x-f.x,e.y-f.y);if(d<5&&los(f.x,f.y,e.x,e.y)){e.stun=Math.max(e.stun,4.4-d*.45);e.target=null;alertE(e);e.mark=e.stun;e.markCh='*';hitAny=true}}
@@ -560,7 +576,7 @@ function drawHeistWorld(){
   /* van */
   if(S.vanT.length){let x0=99,y0=99,x1=0,y1=0;for(const[x,y]of S.vanT){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}const X0=X(x0),Y0=Y(y0),w=(x1-x0+1)*TS,h=(y1-y0+1)*TS;
     c.fillStyle='#00000060';c.fillRect(X0+2,Y0+3,w,h);px(X0,Y0,'#0b0d14',w,h);px(X0+1,Y0+1,'#5a5f73',w-2,h-2);px(X0+1,Y0+1,'#7a8096',w-2,2);px(X0+3,Y0+(h>w?3:3),'#29366f',w-6,6);px(X0+4,Y0+4,'#73eff790',w-8,2);for(const[dx,dy]of[[0,6],[w-2,6],[0,h-9],[w-2,h-9]])px(X0+dx-1,Y0+dy,'#0b0d14',3,5);
-    const s='$'+(S.bags*25)+'K';T(s,X0+w/2-TW(s)/2,Y0+h-10,'#a7f070');if(!S.over&&S.ops.some(o=>able(o)&&o.bag))ringP(X0+w/2,Y0+h/2,Math.max(w,h)/2+2+Math.sin(S.t*6),'#a7f07090')}
+    const s='$'+Math.round(S.bags*BAG/1000)+'K';T(s,X0+w/2-TW(s)/2,Y0+h-10,'#a7f070');if(!S.over&&S.ops.some(o=>able(o)&&o.bag))ringP(X0+w/2,Y0+h/2,Math.max(w,h)/2+2+Math.sin(S.t*6),'#a7f07090')}
   /* police lights */
   if(S.police||S.alarm&&S.policeT<15)for(const[x,y]of S.zs){const on=(S.t*6|0)%2;disc(X(x+.5),Y(y+.5),3,on?'#ff4d6d':'#41a6f6');c.fillStyle=on?'rgba(255,60,80,.12)':'rgba(60,120,255,.12)';c.beginPath();c.arc(X(x+.5),Y(y+.5),26,0,7);c.fill()}
   /* cash, loot */
@@ -779,7 +795,7 @@ function open(h){box.innerHTML=h;modal.classList.add('on');if(S&&S.started&&!S.o
 function close(){modal.classList.remove('on')}
 function preview(map){parse(map);buildStatic();const cn=document.createElement('canvas');cn.width=GW*TS;cn.height=GH*TS;cn.getContext('2d').drawImage(staticLayer,0,0);return cn.toDataURL()}
 const stars=n=>'★'.repeat(n)+'☆'.repeat(3-n);
-let PICK={b:0,sq:null};
+let PICK={b:0,sq:null,kit:null};
 const nbar=v=>`<span class="bar"><i style="width:${v}%;background:${v>=60?'#73eff7':v>=35?'#ffcd75':v>=15?'#ef7d57':'#ff4d6d'}"></i></span>`;
 function chips(r){return r.traits.map(t=>`<span class="chip ${HTR[t].good?'':'bad'}" title="${HTR[t].d}">${HTR[t].n}</span>`).join('')+(r.bond?`<span class="chip" style="background:#5d275d">${r.bondType} de ${(GC.roster.find(q=>q.id===r.bond)||{name:'?'}).name}</span>`:'')}
 function title(){S=null;open(`<div class="title">EL GRAN<br>GOLPE</div><div class="sub" style="color:#ffcd75">UN BANCO · UN RELOJ · UNA BANDA AL BORDE</div>
@@ -787,31 +803,41 @@ function title(){S=null;open(`<div class="title">EL GRAN<br>GOLPE</div><div clas
   <p class="note">Cada miembro tiene <b>nervios</b>. Las balas, la alarma, las sirenas y ver caer a un compañero los desgastan. Con los nervios rotos fallan disparos, desobedecen, se paralizan, se rinden, sufren un colapso o huyen. Después del golpe, algunos renuncian.</p>
   <div class="row" style="justify-content:center">${GC&&GC.roster?'<button class="btn" data-act="hq">CONTINUAR CARRERA</button><button class="btn alt" data-act="reset">NUEVA</button>':'<button class="btn" data-act="newcar">EMPEZAR</button>'}</div>`)}
 function hq(msg){S=null;if(!GC||!GC.roster)newCareer();const C=GC;const cheapest=Math.min(...C.pool.map(r=>r.cost));
-  if(!C.roster.length&&C.money<cheapest){open(`<h2>SE ACABÓ LA BANDA</h2><p>No queda nadie y no hay dinero para reclutar.</p><p>Golpes: <b>${C.done}</b> · Botín total: <b>${fmt(C.total)}</b></p><div class="row"><button class="btn" data-act="newcar">NUEVA CARRERA</button></div>`);return}
+  if(C.debt>DEBT_MAX){open(`<h2>EL PRESTAMISTA PERDIÓ LA PACIENCIA</h2><p>La deuda llegó a <b>${fmt(C.debt)}</b>. Don Ramiro mandó a sus hombres al escondite y la banda se dispersó.</p><p>Golpes: <b>${C.done}</b> · Botín total: <b>${fmt(C.total)}</b></p><div class="row"><button class="btn" data-act="newcar">NUEVA CARRERA</button></div>`);return}
+  if(!C.roster.length&&C.money<cheapest&&C.debt+10000>BORROW_CAP){open(`<h2>SE ACABÓ LA BANDA</h2><p>No queda nadie, no hay dinero y nadie te presta más.</p><p>Golpes: <b>${C.done}</b> · Botín total: <b>${fmt(C.total)}</b></p><div class="row"><button class="btn" data-act="newcar">NUEVA CARRERA</button></div>`);return}
   if(!PICK.sq)PICK.sq=new Set(C.roster.slice(0,4).map(r=>r.id));for(const id of[...PICK.sq])if(!C.roster.find(r=>r.id===id))PICK.sq.delete(id);if(PICK.b>=C.unlocked)PICK.b=0;
-  const imgs=BANKS.map(b=>preview(b));
+  if(!PICK.kit)PICK.kit={broca:1,c4:1,flash:4,chaleco:4,botiquin:2,calmante:2,inhibidor:1,chofer:1};for(const k in ITEMS)PICK.kit[k]=Math.max(0,Math.min(PICK.kit[k]||0,C.inv[k]||0,ITEMS[k].max));
+  const imgs=BANKS.map(b=>preview(b)),pct=C.upg.lavanderia?8:12,n=PICK.sq.size;
   open(`<h2>EL ESCONDITE</h2>${msg?`<div style="margin-bottom:8px">${msg}</div>`:''}
-  <p><span class="money">${fmt(C.money)}</span> · Golpes: <b>${C.done}</b> · Botín total: <b>${fmt(C.total)}</b> · Búsqueda: <b style="color:#ff6b6b">${'★'.repeat(Math.min(5,C.heat))||'—'}</b></p>
-  <h2 style="margin-top:14px">1 · EL BANCO</h2><div class="list">${BANKINFO.map((b,i)=>{const lock=i>=C.unlocked;return `<button class="ms ${PICK.b===i?'on':''} ${lock?'lock':''}" data-b="${i}" ${lock?'disabled':''}><img src="${imgs[i]}" alt=""><span><b>${b.n.toUpperCase()}</b><br><span class="note">${b.d}</span><br><span class="stars">${'★'.repeat(b.diff)}${'☆'.repeat(3-b.diff)}</span>${lock?' <span class="note">Haz un golpe exitoso en el anterior</span>':''}</span><span class="r">Policía en<br><b>${Math.floor(policeTime(i)/60)}:${String(policeTime(i)%60).padStart(2,'0')}</b></span></button>`}).join('')}</div>
-  <h2>2 · LA BANDA <span class="note">(${PICK.sq.size}/4)</span></h2><div class="list">${C.roster.map(r=>`<button class="ms ${PICK.sq.has(r.id)?'on':''}" data-r="${r.id}" style="min-height:56px"><span><b>${r.name.toUpperCase()}</b> <span class="note">${HCLS[r.cls].n} · ${HCLS[r.cls].d}</span><br>${chips(r)}</span><span class="r">Nervios ${nbar(r.nerve)}<br>${r.heists} golpes · ${r.kills} bajas</span></button>`).join('')||'<p class="note">No queda nadie. Recluta abajo.</p>'}</div>
-  <div class="row"><button class="btn" data-act="go-heist" ${PICK.sq.size?'':'disabled'}>¡AL BANCO!</button></div>
+  <div class="stat"><span>Dinero</span><span class="money">${fmt(C.money)}</span><span>Deuda con Don Ramiro <span class="note">(+8% por golpe, límite ${fmt(DEBT_MAX)})</span></span><span style="color:${C.debt>50000?'#ff6b6b':'#e8ecef'}">${fmt(C.debt)}</span><span>Búsqueda policial</span><span style="color:#ff6b6b">${'★'.repeat(Math.min(8,Math.floor(C.heat)))||'—'}</span><span>Golpes · ganancia total</span><span>${C.done} · ${fmt(C.total)}</span></div>
+  <div class="row" style="justify-content:flex-start"><button class="btn sm" data-act="pay" ${C.debt&&C.money?'':'disabled'}>PAGAR $5.000</button><button class="btn sm" data-act="payall" ${C.debt&&C.money>=C.debt?'':'disabled'}>PAGAR TODO</button><button class="btn sm alt" data-act="borrow" ${C.debt+10000<=BORROW_CAP?'':'disabled'}>PEDIR $10.000</button></div>
+  <h2 style="margin-top:14px">1 · EL BANCO</h2><div class="list">${BANKINFO.map((b,i)=>{const lock=i>=C.unlocked;return `<button class="ms ${PICK.b===i?'on':''} ${lock?'lock':''}" data-b="${i}" ${lock?'disabled':''}><img src="${imgs[i]}" alt=""><span><b>${b.n.toUpperCase()}</b><br><span class="note">${b.d}</span><br><span class="stars">${'★'.repeat(b.diff)}${'☆'.repeat(3-b.diff)}</span>${lock?' <span class="note">Haz un golpe exitoso en el anterior</span>':''}</span><span class="r">Bolsa: <b>${fmt(b.bag)}</b><br>Policía: <b>${Math.floor(policeTime(i)/60)}:${String(policeTime(i)%60).padStart(2,'0')}</b></span></button>`}).join('')}</div>
+  <h2>2 · LA BANDA <span class="note">(${n}/4 · cada uno que escape se lleva ${pct}% del botín: ${n*pct}% en total)</span></h2><div class="list">${C.roster.map(r=>`<button class="ms ${PICK.sq.has(r.id)?'on':''}" data-r="${r.id}" style="min-height:56px"><span><b>${r.name.toUpperCase()}</b> <span class="note">${HCLS[r.cls].n} · ${HCLS[r.cls].d}</span><br>${chips(r)}</span><span class="r">Nervios ${nbar(r.nerve)}<br>${r.heists} golpes · ${r.kills} bajas</span></button>`).join('')||'<p class="note">No queda nadie. Recluta abajo.</p>'}</div>
+  <h2>3 · EQUIPO PARA ESTE GOLPE <span class="note">(se gasta al usarlo; si fracasas, lo pierdes todo)</span></h2><div class="list">${Object.entries(ITEMS).map(([k,it])=>`<div class="ms" style="cursor:default;min-height:50px"><span><b>${it.n.toUpperCase()}</b> <span class="note">· tienes ${C.inv[k]||0}</span><br><span class="note">${it.d}</span></span><span class="r" style="white-space:nowrap"><button class="btn sm alt" data-kit="${k}" data-dv="-1" ${PICK.kit[k]>0?'':'disabled'}>−</button> <b style="display:inline-block;min-width:22px;text-align:center">${PICK.kit[k]}</b> <button class="btn sm alt" data-kit="${k}" data-dv="1" ${PICK.kit[k]<Math.min(C.inv[k]||0,it.max)?'':'disabled'}>+</button><br><button class="btn sm" data-buy="${k}" style="margin-top:4px" ${C.money<it.cost?'disabled':''}>COMPRAR ${fmt(it.cost)}</button></span></div>`).join('')}</div>
+  <div class="row"><button class="btn" data-act="go-heist" ${n?'':'disabled'}>¡AL BANCO!</button></div>
+  <h2 style="margin-top:16px">TRABAJITOS</h2><div class="list"><div class="ms" style="cursor:default"><span><b>TRABAJITO DE POCA MONTA</b><br><span class="note">Gana ${fmt(1500)}–${fmt(4000)}. Sube la búsqueda y hay riesgo de que arresten a alguien.</span></span><span class="r"><button class="btn sm" data-act="small" ${C.roster.length?'':'disabled'}>HACERLO</button></span></div>
+  <div class="ms" style="cursor:default"><span><b>BAJAR EL PERFIL</b><br><span class="note">Una semana sin hacer ruido: −2 de búsqueda y la banda recupera nervios.</span></span><span class="r"><button class="btn sm" data-act="lay" ${C.money>=2500&&C.heat>0?'':'disabled'}>${fmt(2500)}</button></span></div></div>
   <h2 style="margin-top:16px">RECLUTAR</h2><div class="list">${C.pool.map((r,i)=>`<div class="ms" style="cursor:default;min-height:52px"><span><b>${r.name.toUpperCase()}</b> <span class="note">${HCLS[r.cls].n}</span><br>${r.traits.map(t=>`<span class="chip ${HTR[t].good?'':'bad'}">${HTR[t].n}</span>`).join('')}</span><span class="r"><button class="btn sm" data-hire="${i}" ${C.money<r.cost||C.roster.length>=8?'disabled':''}>${fmt(r.cost)}</button></span></div>`).join('')}</div>
-  <h2 style="margin-top:16px">EQUIPO</h2><div class="list">${Object.entries(GUPG).map(([k,u])=>`<div class="ms" style="cursor:default;min-height:48px"><span><b>${u.n.toUpperCase()}</b><br><span class="note">${u.d}</span></span><span class="r">${C.upg[k]?'<span class="chip">LISTO</span>':`<button class="btn sm" data-upg="${k}" ${C.money<u.cost?'disabled':''}>${fmt(u.cost)}</button>`}</span></div>`).join('')}</div>
+  <h2 style="margin-top:16px">INVERSIONES <span class="note">(permanentes)</span></h2><div class="list">${Object.entries(GINV).map(([k,u])=>`<div class="ms" style="cursor:default;min-height:48px"><span><b>${u.n.toUpperCase()}</b><br><span class="note">${u.d}</span></span><span class="r">${C.upg[k]?'<span class="chip">TUYA</span>':`<button class="btn sm" data-upg="${k}" ${C.money<u.cost?'disabled':''}>${fmt(u.cost)}</button>`}</span></div>`).join('')}</div>
   ${C.fallen.length||C.jailed.length||C.quit.length?`<h2 style="margin-top:16px">LOS QUE YA NO ESTÁN</h2><p class="note">${C.fallen.length?'Muertos: '+C.fallen.join(', ')+'<br>':''}${C.jailed.length?'En la cárcel: '+C.jailed.join(', ')+'<br>':''}${C.quit.length?'Se fueron: '+C.quit.join(', '):''}</p>`:''}
   <div class="row"><button class="btn alt" data-act="menu">MENÚ</button></div>`)}
-const policeTime=i=>Math.max(90,BANKINFO[i].police-GC.heat*8+(GC.upg.furgon?25:0));
+const policeTime=i=>Math.max(90,BANKINFO[i].police-GC.heat*8+(GC.upg.blindada?15:0));
 function goHeist(){const C=GC,b=PICK.b,sq=C.roster.filter(r=>PICK.sq.has(r.id)).slice(0,4);if(!sq.length)return;sq.sort((a,b2)=>(b2.cls==='cerebro')-(a.cls==='cerebro'));
-  MS={n:BANKINFO[b].n,type:'heist',bank:b,diff:BANKINFO[b].diff,police:policeTime(b),par:BANKINFO[b].par,map:BANKS[b],squad:sq.map((r,i)=>crewDef(r,i)),feat:{}};briefing()}
-function briefing(){S=null;newGame('tactical');const bi=BANKINFO[MS.bank];
+  const kit={};for(const k in ITEMS){kit[k]=Math.min(PICK.kit[k]||0,C.inv[k]||0);C.inv[k]-=kit[k]}storeGC();
+  BAG=BANKINFO[b].bag;CASH=BANKINFO[b].cash;
+  const squad=sq.map((r,i)=>crewDef(r,i));for(let f=0;f<kit.flash;f++)squad[f%squad.length].fl++;for(let v=0;v<Math.min(kit.chaleco,squad.length);v++)squad[v].armor=true;
+  MS={n:BANKINFO[b].n,type:'heist',bank:b,diff:BANKINFO[b].diff,police:policeTime(b)+(kit.chofer?25:0),par:BANKINFO[b].par,map:BANKS[b],squad,feat:{},kit};briefing()}
+function briefing(){S=null;newGame('tactical');const bi=BANKINFO[MS.bank];const kitTxt=Object.entries(MS.kit).filter(([k,n])=>n>0).map(([k,n])=>n+'× '+ITEMS[k].n).join(', ')||'nada';
   open(`<h2>${bi.n.toUpperCase()}</h2><p>${bi.d} La policía llega en <b>${Math.floor(MS.police/60)}:${String(MS.police%60).padStart(2,'0')}</b>; si suena la alarma, en 40 segundos.</p>
   <ul><li><b>Bóveda</b>: alguien tiene que quedarse junto a la puerta de acero. El <b>Técnico</b> taladra rápido; <b>Explosivos</b> la vuela en 3 s, pero suena la alarma.</li>
   <li><b>Panel de seguridad</b> (cuarto de la derecha): cortarlo apaga cámaras y alarma. Los <b>guardias</b> alertados y los <b>empleados</b> asustados corren a activarla. Grita "¡al suelo!" acercándote a los civiles.</li>
   <li><b>Botín</b>: cada bolsa vale ${fmt(BAG)} y te hace más lento. Llévalas a la <b>camioneta</b> y pulsa <b>¡HUIR!</b>; quien no esté dentro se queda atrás.</li>
   <li><b>Nervios</b>: si se rompen, alguien puede rendirse o colapsar. Acércate a él para levantarlo; el Cerebro lo hace más rápido y calma a quienes tiene cerca.</li></ul>
   <p class="note"><b>Modo Líder</b>: controlas al primero de la banda (clic para caminar, clic derecho para dar órdenes, Tiempo Halcón). <b>Mando táctico</b>: planificas rutas y usas los botones BÓVEDA, BOTÍN y PANEL.</p>
-  <div class="row"><button class="btn alt" data-act="hq">VOLVER</button><button class="btn" data-act="leader">MODO LÍDER</button><button class="btn" data-act="go">MANDO TÁCTICO</button></div>`)}
+  <p class="note"><b>Llevas:</b> ${kitTxt}. Si el golpe fracasa, pierdes todo lo que llevaste. Lo que no se use vuelve contigo si escapan.</p>
+  <div class="row"><button class="btn alt" data-act="hq-cancel">VOLVER</button><button class="btn" data-act="leader">MODO LÍDER</button><button class="btn" data-act="go">MANDO TÁCTICO</button></div>`)}
 function pauseMenu(){if(!S||S.over)return;open(`<h2>PAUSA</h2><p>${S.M.n} · ${fmt(S.bags*BAG+S.cashTaken)} en la camioneta</p><div class="row"><button class="btn alt" data-act="abort">ABORTAR (huir ya)</button><button class="btn" data-act="go">SEGUIR</button></div>`)}
-function showResult(){if(S.processed)return;S.processed=true;const C=GC,ops=S.ops,win=S.win,money=S.money||0;const news=[];
+function showResult(){if(S.processed)return;S.processed=true;const C=GC,ops=S.ops,win=S.win,money=S.money||0;const news=[],kitBack={};
   const lost=ops.filter(o=>!o.alive||o.arrested||o.fled).length,st=win?1+(lost===0?1:0)+(S.bags===totalBags()&&S.bags>0?1:0):0;
   const bondDead=new Set(ops.filter(o=>!o.alive).map(o=>o.d.rid));
   for(const o of ops){const r=C.roster.find(q=>q.id===o.d.rid);if(!r)continue;const rm=()=>{C.roster.splice(C.roster.indexOf(r),1);const p=C.roster.find(q=>q.bond===r.id);if(p){p.bond=null;p.bondType=''}};
@@ -822,21 +848,35 @@ function showResult(){if(S.processed)return;S.processed=true;const C=GC,ops=S.op
     const lostBond=r.bond&&bondDead.has(r.bond);
     if(!r.traits.includes('leal')&&((r.nerve<30&&R()<.55)||(lostBond&&R()<.5))){rm();C.quit.push(r.name);news.push(`<span style="color:#ef7d57">${r.name} renunció: ${lostBond?'no soporta lo que pasó.':'"Yo no sirvo pa\' esto."'}</span>`);continue}
     if(o.events.length)news.push(`${r.name} pasó por: ${o.events.map(e=>({freeze:'parálisis',surr:'rendición',collapse:'colapso nervioso'}[e]||e)).join(', ')}.`)}
-  for(const r of C.roster)r.nerve=Math.min(100,r.nerve+35);
-  if(win){C.money+=money;C.total+=money;C.done++;C.best=Math.max(C.best||0,C.done);if(MS.bank+1>=C.unlocked&&MS.bank<2)C.unlocked=MS.bank+2}
-  C.heat=Math.min(8,C.heat+(S.alarm||S.police?2:1));if(!win&&R()<.5)C.heat=Math.max(0,C.heat-1);
+  for(const r of C.roster)r.nerve=Math.min(100,r.nerve+30);
+  const esc=ops.filter(o=>o.escaped).length,pct=C.upg.lavanderia?.08:.12,take=win?money:0,cut=Math.round(take*pct*esc),interest=Math.round(C.debt*RATE),net=take-cut-RENT;
+  if(win){for(const k in ITEMS){if(k==='flash'||k==='chaleco')continue;kitBack[k]=S.kit[k]||0}kitBack.flash=ops.filter(o=>o.escaped).reduce((a,o)=>a+o.fl,0);for(const k in kitBack)C.inv[k]=(C.inv[k]||0)+kitBack[k]}
+  C.money+=net;C.debt+=interest;if(C.money<0){C.debt+=-C.money;C.money=0}
+  if(win){C.total+=take-cut;C.done++;C.best=Math.max(C.best||0,C.done);if(MS.bank+1>=C.unlocked&&MS.bank<2)C.unlocked=MS.bank+2}
+  C.heat=Math.min(8,C.heat+(S.alarm||S.police?2:1)*(C.upg.contacto?.5:1));if(!win&&R()<.5)C.heat=Math.max(0,C.heat-1);
+  const taken=Object.entries(MS.kit).filter(([k,v])=>v>0),used=Object.entries(S.usedLog).map(([k,v])=>v+'× '+ITEMS[k].n);
+  const ledger=`<div class="stat" style="border-top:1px solid #333c57;padding-top:8px"><span>Botín</span><span>${fmt(take)}</span><span>Parte de la banda (${esc} × ${Math.round(pct*100)}%)</span><span style="color:#ff6b6b">−${fmt(cut)}</span><span>Alquiler del escondite</span><span style="color:#ff6b6b">−${fmt(RENT)}</span><span><b>Neto</b></span><span class="money">${net<0?'−':''}${fmt(Math.abs(net))}</span><span>Intereses (a la deuda)</span><span style="color:#ff6b6b">+${fmt(interest)} → ${fmt(C.debt)}</span></div>
+  <p class="note">${used.length?'Gastaste: '+used.join(', ')+'. ':''}${win?(Object.values(kitBack).some(v=>v)?'Vuelve al almacén: '+Object.entries(kitBack).filter(([k,v])=>v).map(([k,v])=>v+'× '+ITEMS[k].n).join(', ')+'.':''):(taken.length?'<span style="color:#ff6b6b">Perdiste todo el equipo que llevaste: '+taken.map(([k,v])=>v+'× '+ITEMS[k].n).join(', ')+'.</span>':'')}</p>`;
   C.pool[R()*C.pool.length|0]=mkCrook();storeGC();
-  open(`<h2>${win?'¡GOLPE EXITOSO!':'EL GOLPE FRACASÓ'}</h2><p>${S.why}</p>${win?`<p class="money" style="font-size:18px">+${fmt(money)}</p><p class="stars" style="font-size:24px">${stars(st)}</p>`:''}
+  open(`<h2>${win?'¡GOLPE EXITOSO!':'EL GOLPE FRACASÓ'}</h2><p>${S.why}</p>${win?`<p class="stars" style="font-size:24px">${stars(st)}</p>`:''}
   <div class="stat"><span>Bolsas</span><span>${S.bags}/${totalBags()} (${fmt(S.bags*BAG)})</span><span>Cajas registradoras</span><span>${fmt(S.cashTaken)}</span><span>Tiempo</span><span>${Math.floor(S.time/60)}:${String(Math.floor(S.time%60)).padStart(2,'0')}</span><span>Alarma</span><span>${S.alarm?'Sonó':S.police?'—':'Nunca sonó'}</span>${ops.map(o=>`<span style="color:${o.col}">${o.n}</span><span>${!o.alive?'muerto':o.arrested?'arrestado':o.fled?'huyó':'escapó'} · ${o.kills} bajas · nervios ${Math.round(o.nerve)}</span>`).join('')}</div>
-  ${news.length?`<p>${news.join('<br>')}</p>`:''}
+  ${ledger}${news.length?`<p>${news.join('<br>')}</p>`:''}
   <div class="row"><button class="btn" data-act="hq">AL ESCONDITE</button></div>`)}
 modal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;audioInit();sfx('click');const d=b.dataset;
   if(d.b!==undefined){PICK.b=+d.b;hq();return}
   if(d.r!==undefined){if(PICK.sq.has(d.r))PICK.sq.delete(d.r);else if(PICK.sq.size<4)PICK.sq.add(d.r);else sfx('deny');hq();return}
   if(d.hire!==undefined){const r=GC.pool[+d.hire];if(GC.money>=r.cost&&GC.roster.length<8){GC.money-=r.cost;const nr={...r,cost:0};if(R()<.35&&GC.roster.length){const p=pick(GC.roster.filter(q=>!q.bond));if(p)bondPair(nr,p)}GC.roster.push(nr);GC.pool[+d.hire]=mkCrook();if(PICK.sq.size<4)PICK.sq.add(nr.id);storeGC();sfx('cash')}hq(`${r.name} se une a la banda.`);return}
-  if(d.upg!==undefined){const u=GUPG[d.upg];if(GC.money>=u.cost){GC.money-=u.cost;GC.upg[d.upg]=true;storeGC();sfx('cash')}hq(`Compraste: ${u.n}.`);return}
+  if(d.kit!==undefined){PICK.kit[d.kit]=Math.max(0,Math.min((PICK.kit[d.kit]||0)+(+d.dv),GC.inv[d.kit]||0,ITEMS[d.kit].max));hq();return}
+  if(d.buy!==undefined){const it=ITEMS[d.buy];if(GC.money>=it.cost){GC.money-=it.cost;GC.inv[d.buy]=(GC.inv[d.buy]||0)+1;if((PICK.kit[d.buy]||0)<it.max)PICK.kit[d.buy]=(PICK.kit[d.buy]||0)+1;storeGC();sfx('cash')}hq();return}
+  if(d.upg!==undefined){const u=GINV[d.upg];if(GC.money>=u.cost){GC.money-=u.cost;GC.upg[d.upg]=true;storeGC();sfx('cash')}hq(`Compraste: ${u.n}.`);return}
   const a=d.act;
-  if(a==='hq')hq();else if(a==='newcar'){newCareer();PICK={b:0,sq:null};hq('Nueva banda reunida. Cinco ladrones, '+fmt(GC.money)+' y un sueño.')}
+  if(a==='hq')hq();
+  else if(a==='hq-cancel'){for(const k in MS.kit)GC.inv[k]=(GC.inv[k]||0)+MS.kit[k];storeGC();hq()}
+  else if(a==='pay'){const v=Math.min(5000,GC.money,GC.debt);GC.money-=v;GC.debt-=v;storeGC();hq(`Pagaste ${fmt(v)} a Don Ramiro.`)}
+  else if(a==='payall'){const v=Math.min(GC.money,GC.debt);GC.money-=v;GC.debt-=v;storeGC();hq(GC.debt?`Pagaste ${fmt(v)}.`:'<b style="color:#a7f070">¡Deuda saldada! Don Ramiro ya no te busca.</b>')}
+  else if(a==='borrow'){GC.money+=10000;GC.debt+=10000;storeGC();hq('Don Ramiro te presta '+fmt(10000)+'. Sonríe demasiado.')}
+  else if(a==='small'){const g=1500+Math.round(R()*25)*100;GC.money+=g;GC.heat=Math.min(8,GC.heat+(GC.upg.contacto?.5:1));let m=`Trabajito hecho: <b style="color:#a7f070">+${fmt(g)}</b>. La búsqueda sube.`;if(GC.roster.length&&R()<.12){const r=pick(GC.roster);GC.roster.splice(GC.roster.indexOf(r),1);GC.jailed.push(r.name);const p=GC.roster.find(q=>q.bond===r.id);if(p){p.bond=null;p.bondType=''}m+=`<br><span style="color:#ff6b6b">⛓ Arrestaron a ${r.name}.</span>`}else if(GC.roster.length){const r=pick(GC.roster);r.nerve=Math.max(0,r.nerve-10)}storeGC();hq(m)}
+  else if(a==='lay'){GC.money-=2500;GC.heat=Math.max(0,GC.heat-2);for(const r of GC.roster)r.nerve=Math.min(100,r.nerve+20);storeGC();hq('La banda se quedó tranquila una semana.')}else if(a==='newcar'){newCareer();PICK={b:0,sq:null,kit:null};hq('Nueva banda: cuatro ladrones, '+fmt(GC.money)+' y una deuda de '+fmt(GC.debt)+' con Don Ramiro. Hay que salir a flote.')}
   else if(a==='reset')open(`<h2>¿NUEVA CARRERA?</h2><p>Perderás la banda, el dinero y el equipo.</p><div class="row"><button class="btn alt" data-act="menu">CANCELAR</button><button class="btn" data-act="newcar">EMPEZAR DE CERO</button></div>`);
   else if(a==='go-heist')goHeist();
   else if(a==='leader'){newGame('leader');close()}
