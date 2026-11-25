@@ -273,15 +273,75 @@ const mi2=()=>MI+1;
 function lineP0(b,x0,y0,x1,y1,col){const d=Math.max(Math.abs(x1-x0),Math.abs(y1-y0));b.fillStyle=col;for(let i=0;i<=d;i++){const t=i/(d||1);b.fillRect(Math.round(lerp(x0,x1,t)),Math.round(lerp(y0,y1,t)),1,1)}}
 
 /* ================= SETUP ================= */
-function newGame(mi){MI=mi;const P=parse(mi);buildStatic();const M=MISSIONS[mi];
+function newGame(mi,mode='tactical'){MI=mi;const P=parse(mi);buildStatic();const M=MISSIONS[mi];
   const cx=GW/2,cy=GH/2;
   const ops=OPS.slice(0,4).map((d,k)=>{const sp=P.spawns[k%P.spawns.length];return{team:0,id:k,d,n:d.n,col:d.col,w:W[d.w],x:sp[0]+.5,y:sp[1]+.5,ang:Math.atan2(cy-sp[1],cx-sp[0]),lookAng:Math.atan2(cy-sp[1],cx-sp[0]),hp:d.hp,max:d.hp,alive:true,fl:d.fl,plan:[],cur:null,path:[],busy:0,busyFn:null,busyTxt:'',wait:null,target:null,react:0,cd:0,moving:false,moveAng:0,hitT:0,lastCall:-9,kills:0,shots:0,hits:0}});
   let eid=0;const ens=P.ens.map(([x,y,ch])=>{const d=EK[ch];let ba=0,bd=99;for(const dr of doors.values()){const q=hyp(dr.x-x,dr.y-y);if(q<bd&&q<9&&los(x+.5,y+.5,dr.x+.5,dr.y+.5)){bd=q;ba=Math.atan2(dr.y-y,dr.x-x)}}if(bd===99)ba=R()*Math.PI*2;
     return{team:1,id:eid++,k:ch,d,w:W[d.w],x:x+.5,y:y+.5,hx:x+.5,hy:y+.5,ang:ba,base:ba,hp:d.hp,max:d.hp,alive:true,alert:false,target:null,react:0,cd:0,stun:0,path:[],busy:0,busyFn:null,waitT:1+R()*3,noise:null,searchT:0,lostT:0,seen:false,lx:0,ly:0,exec:null,execT:0,mark:0,markCh:'',hitT:0,moving:false,moveAng:0}});
   const hos=P.hos.map(([x,y])=>({x:x+.5,y:y+.5,secured:false,dead:false,danger:0}));
   for(const h of hos){let best=null,bd=4.5;for(const e of ens){const d=hyp(e.x-h.x,e.y-h.y);if(d<bd&&!e.d.patrol){bd=d;best=e}}if(best){best.exec=h;best.base=best.ang}}
-  S={M,ops,ens,hos,bomb:P.bomb,bombT:M.time||0,t:0,time:0,running:false,paused:true,started:false,over:false,sel:0,tool:'mover',speed:1,slow:0,shake:0,white:0,parts:[],tracers:[],flashes:[],floats:[],log:[],corpses:[],kills:0,execWarned:new Set(),lastBeep:0,decals:[]};
-  radio('CENTRAL','Equipo Halcón en posición. Planifique la entrada.','#ffcd75')}
+  S={M,ops,ens,hos,bomb:P.bomb,bombT:M.time||0,t:0,time:0,running:false,paused:true,started:false,over:false,sel:0,tool:'mover',speed:1,slow:0,shake:0,white:0,parts:[],tracers:[],flashes:[],floats:[],log:[],corpses:[],kills:0,execWarned:new Set(),lastBeep:0,decals:[],muzzle:[],clears:[],pings:[],mode,firing:false};
+  if(mode==='leader'){const L=ops[0];L.player=true;L.hp=L.max=140;L.trail=L.ang;for(const o of ops)if(!o.player)o.order={k:'follow'};S.started=true;S.paused=false;radio('CENTRAL','Líder, tienes el mando. El equipo te sigue.','#ffcd75')}
+  else radio('CENTRAL','Equipo Halcón en posición. Planifique la entrada.','#ffcd75')}
+function leader(){return S.ops.find(o=>o.player&&o.alive)}
+function nearestFree(x,y,taken,maxR=3,block){const sx=Math.floor(x),sy=Math.floor(y),seen=new Set([sy*GW+sx]),q=[[sx,sy]];
+  while(q.length){const[cx,cy]=q.shift();if(passable(cx,cy)&&T_(cx,cy)!==DOOR&&!taken.has(cy*GW+cx)&&!(block&&block.has(cy*GW+cx)))return[cx,cy];
+    for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=cx+dx,ny=cy+dy,k=ny*GW+nx;if(!inb(nx,ny)||seen.has(k)||Math.abs(nx-sx)>maxR||Math.abs(ny-sy)>maxR||!passable(nx,ny)||(block&&block.has(k)))continue;seen.add(k);q.push([nx,ny])}}return null}
+function goPath(o,tx,ty){const p=astar(Math.floor(o.x),Math.floor(o.y),tx,ty);if(p){o.path=p;return true}return false}
+function resetOp(o){o.plan=[];o.cur=null;o.path=o.path.slice(0,1);o.wait=null}
+function ping(x,y,col){S.pings.push({x,y,t:.7,col})}
+function orderGoto(list,fx,fy){const taken=new Set(),cx=list.reduce((a,o)=>a+o.x,0)/list.length,cy=list.reduce((a,o)=>a+o.y,0)/list.length,look=Math.atan2(fy-cy,fx-cx);let ok=false;
+  for(const o of list){const t=nearestFree(fx,fy,taken,4);if(!t)continue;taken.add(t[1]*GW+t[0]);resetOp(o);o.order={k:'goto',tx:t[0],ty:t[1],look};ok=true}return ok}
+function orderClear(dr,list){if(!list.length)return false;const sides=dr.hz?[[dr.x,dr.y-1],[dr.x,dr.y+1]]:[[dr.x-1,dr.y],[dr.x+1,dr.y]];
+  if(!sides.every(([x,y])=>passable(x,y)&&T_(x,y)!==DOOR))return false;
+  const cx=Math.floor(list.reduce((a,o)=>a+o.x,0)/list.length),cy=Math.floor(list.reduce((a,o)=>a+o.y,0)/list.length);
+  const L=sides.map(([x,y])=>{const p=astar(cx,cy,x,y);return p?p.length:999}),outT=L[0]<=L[1]?sides[0]:sides[1],inT=L[0]<=L[1]?sides[1]:sides[0];
+  const room=[],rs=new Set([inT[1]*GW+inT[0]]),q=[inT];while(q.length&&room.length<90){const[x,y]=q.shift();room.push([x,y]);for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){const nx=x+dx,ny=y+dy,k=ny*GW+nx;if(rs.has(k)||!inb(nx,ny))continue;const t=T_(nx,ny);if(t>=WOOD&&t<=CARP){rs.add(k);q.push([nx,ny])}}}
+  const block=new Set(rs);block.add(dr.i);const b=list.find(o=>o.d.breacher&&o.fl>0)||list.find(o=>o.d.breacher)||list[0];const ord=[b,...list.filter(o=>o!==b)];
+  const C={dr,ops:ord,stack:new Map(),pts:new Map(),phase:'stack',t:0,room:rs,inT,outT,b};const taken=new Set();
+  for(const o of ord){const t=nearestFree(outT[0]+.5,outT[1]+.5,taken,3,block)||outT;taken.add(t[1]*GW+t[0]);C.stack.set(o,t)}
+  const dx=inT[0]-outT[0],dy=inT[1]-outT[1],p0=rs.has((inT[1]+dy)*GW+inT[0]+dx)?[inT[0]+dx,inT[1]+dy]:inT;C.pts.set(b,p0);const chosen=[inT,p0];
+  const cand=room.filter(([x,y])=>hyp(x-inT[0],y-inT[1])<=6.5);
+  for(const o of ord){if(o===b)continue;let best=null,bv=-1;for(const t of cand){if(chosen.some(c=>c[0]===t[0]&&c[1]===t[1]))continue;let m=1e9;for(const c of chosen)m=Math.min(m,hyp(t[0]-c[0],t[1]-c[1]));if(m>bv){bv=m;best=t}}const t=best||inT;chosen.push(t);C.pts.set(o,t)}
+  for(const o of ord){resetOp(o);o.order={k:'clear',C};const t=C.stack.get(o);goPath(o,t[0],t[1])}
+  S.clears.push(C);radio(b.n,'Entendido. Apilando en la puerta.',b.col);return true}
+function runOrder(o,dt){const od=o.order;o.ordT=(o.ordT||0)-dt;
+  if(od.k==='follow'){const L=leader();if(!L){o.order={k:'hold'};return}if(o.ordT>0)return;o.ordT=.35;
+    const fol=S.ops.filter(q=>q.alive&&!q.player&&q.order&&q.order.k==='follow'),k=fol.indexOf(o),n=fol.length,a=L.trail,lat=(k-(n-1)/2)*1.2;
+    const tx=L.x-Math.cos(a)*1.6-Math.sin(a)*lat,ty=L.y-Math.sin(a)*1.6+Math.cos(a)*lat;o.lookAng=L.ang+(k-(n-1)/2)*.8;
+    if(hyp(o.x-tx,o.y-ty)<1.2&&!o.path.length)return;
+    const taken=new Set(fol.filter(q=>q!==o&&q.slot).map(q=>q.slot[1]*GW+q.slot[0]));taken.add(Math.floor(L.y)*GW+Math.floor(L.x));
+    const t=nearestFree(tx,ty,taken)||[Math.floor(L.x),Math.floor(L.y)];o.slot=t;const end=o.path[o.path.length-1];if(end&&end[0]===t[0]&&end[1]===t[1])return;if(Math.floor(o.x)===t[0]&&Math.floor(o.y)===t[1])return;goPath(o,t[0],t[1])}
+  else if(od.k==='goto'){if(!od.sent){od.sent=1;goPath(o,od.tx,od.ty)}else if(!o.path.length){o.order={k:'hold'};o.lookAng=od.look}}}
+function updClears(dt){for(const C of S.clears){const act=C.ops.filter(o=>o.alive&&o.order&&o.order.C===C);if(!act.length){C.dead=1;continue}C.t+=dt;const dr=C.dr;
+  if(!act.includes(C.b))C.b=act.find(o=>o.d.breacher)||act[0];
+  if(C.phase==='stack'){let ready=true;for(const o of act){const t=C.stack.get(o);if(o.path.length||o.busy>0||hyp(o.x-t[0]-.5,o.y-t[1]-.5)>.5)ready=false;else o.lookAng=Math.atan2(dr.y+.5-o.y,dr.x+.5-o.x)}
+    if(ready||C.t>9||dr.state!==0){C.phase='breach';C.t=0;const b=C.b;if(dr.state===0){dr.mode=b.fl>0?'flash':'patear';radio(b.n,b.fl>0?'En posición. ¡Brecha y flash!':'En posición. ¡Brecha!',b.col)}const p=C.pts.get(b);goPath(b,p[0],p[1])}}
+  else if(C.phase==='breach'){if(dr.state!==0)C.t2=(C.t2||0)+dt;if(C.t2>.6||C.t>7){C.phase='enter';C.t=0;act.forEach((o,i)=>{const p=C.pts.get(o);if(o!==C.b)goPath(o,p[0],p[1]);o.lookAng=Math.atan2(p[1]-C.inT[1],p[0]-C.inT[0])})}}
+  else if(C.phase==='enter'){if(act.every(o=>!o.path.length&&o.busy<=0)||C.t>12){C.dead=1;const foes=S.ens.some(e=>e.alive&&C.room.has(Math.floor(e.y)*GW+Math.floor(e.x)));const w=act[0];radio(w.n,foes?'Hostiles en el cuarto. Mantenemos.':'¡Cuarto despejado!',w.col);if(!foes)say(w,'¡LIMPIO!','#a7f070');act.forEach(o=>{o.order={k:'hold'}})}}}
+  S.clears=S.clears.filter(c=>!c.dead)}
+function updPlayer(o,dt){o.cd-=dt;o.moving=false;const mx=(mouse.x-MX)/TS,my=(mouse.y-MY)/TS;if(mouse.x>=0)o.ang=Math.atan2(my-o.y,mx-o.x);
+  if(o.busy>0){o.busy-=dt;if(o.busy<=0&&o.busyFn){const f=o.busyFn;o.busyFn=null;o.busyTxt='';f()}}
+  else{let vx=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0),vy=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0);
+    if(vx||vy){const l=hyp(vx,vy);vx/=l;vy/=l;const sp=2.5*dt*(S.firing?.7:1),r=.28;
+      const blk=(nx,ny)=>{for(const[ox,oy]of[[-r,-r],[r,-r],[-r,r],[r,r]]){const tx=Math.floor(nx+ox),ty=Math.floor(ny+oy);if(!passable(tx,ty))return{};const d=doorAt(tx,ty);if(d&&d.state===0)return{d}}return null};
+      const b1=blk(o.x+vx*sp,o.y);if(!b1){o.x+=vx*sp;o.moving=true}const b2=blk(o.x,o.y+vy*sp);if(!b2){o.y+=vy*sp;o.moving=true}
+      const bd=(b1&&b1.d)||(b2&&b2.d);if(bd){o.busy=.4;o.busyTxt='PUERTA';o.busyFn=()=>openDoor(bd)}o.trail=Math.atan2(vy,vx)}}
+  if(S.firing&&o.cd<=0&&o.busy<=0)playerFire(o)}
+function playerFire(o){const w=o.w;o.cd=w.cd;o.shots++;sfx(w.snd);noiseAt(o.x,o.y,w.noise,o);const a=o.ang+(R()-.5)*(o.moving?.18:.07);
+  S.muzzle.push({x:o.x+Math.cos(o.ang)*.55,y:o.y+Math.sin(o.ang)*.55,a:o.ang,t:.06});let hit=null,ex=o.x,ey=o.y,wall=false;
+  for(let d=.45;d<w.range+4;d+=.1){const x=o.x+Math.cos(a)*d,y=o.y+Math.sin(a)*d;ex=x;ey=y;if(!inb(Math.floor(x),Math.floor(y))||blocksSight(Math.floor(x),Math.floor(y))){wall=true;break}for(const e of S.ens)if(e.alive&&hyp(e.x-x,e.y-y)<.38){hit=e;break}if(hit)break}
+  S.tracers.push({x0:o.x+Math.cos(o.ang)*.55,y0:o.y+Math.sin(o.ang)*.55,x1:ex,y1:ey,t:.07,team:0});
+  if(hit){hurt(hit,w.dmg,o,a);o.hits++}else if(wall)for(let j=0;j<3;j++)S.parts.push({x:ex,y:ey,vx:(R()-.5)*4,vy:(R()-.5)*4,t:.18,c:'#ffcd75',drag:6,glow:1});
+  S.parts.push({x:o.x,y:o.y,vx:Math.cos(o.ang+1.57)*2+(R()-.5),vy:Math.sin(o.ang+1.57)*2+(R()-.5),t:.6,c:'#d9a440',drag:6,stay:1})}
+function playerKick(o){let best=null,bd=1.4;const fx=o.x+Math.cos(o.ang)*.6,fy=o.y+Math.sin(o.ang)*.6;for(const dr of doors.values()){if(dr.state!==0)continue;const d=hyp(dr.x+.5-fx,dr.y+.5-fy);if(d<bd){bd=d;best=dr}}if(!best){sfx('deny');return}o.busy=.3;o.busyTxt='BRECHA';say(o,'¡BRECHA!');o.busyFn=()=>breach(best,o)}
+function contextCmd(fx,fy){const list=S.ops.filter(o=>o.alive&&!o.player);if(!list.length){sfx('deny');return}
+  let dr=null,bd=1.1;for(const d of doors.values()){const q=hyp(d.x+.5-fx,d.y+.5-fy);if(q<bd){bd=q;dr=d}}
+  if(dr){if(orderClear(dr,list)){ping(dr.x+.5,dr.y+.5,'#ef7d57');radio('TÚ','Despejen ese cuarto.','#a7f070')}else sfx('deny');return}
+  const h=S.hos.find(h=>!h.secured&&!h.dead&&hyp(h.x-fx,h.y-fy)<1.2);if(h){const o=list.slice().sort((a,b)=>hyp(a.x-h.x,a.y-h.y)-hyp(b.x-h.x,b.y-h.y))[0];orderGoto([o],h.x,h.y);ping(h.x,h.y,'#ffcd75');radio('TÚ',o.n+', asegura al rehén.','#a7f070');return}
+  if(!passable(Math.floor(fx),Math.floor(fy))){sfx('deny');return}
+  if(orderGoto(list,fx,fy)){ping(fx,fy,'#a7f070');radio('TÚ','Muévanse ahí.','#a7f070')}}
+function allOrder(k){const list=S.ops.filter(o=>o.alive&&!o.player);for(const o of list){resetOp(o);o.order={k}}sfx('go');radio('TÚ',k==='follow'?'Equipo, ¡síganme!':'Equipo, ¡alto! Mantengan posición.','#a7f070')}
 
 /* ================= HELPERS ================= */
 function say(u,s,col){S.floats.push({x:u.x,y:u.y-.9,s,col:col||(u.team?'#ff6b6b':u.col),t:1.3})}
@@ -327,7 +387,7 @@ function kill(u,src,a){u.alive=false;u.hp=0;u.dieA=a;
   for(let k=0;k<7;k++)S.parts.push({x:u.x+Math.cos(a)*.3,y:u.y+Math.sin(a)*.3,vx:Math.cos(a)*(1+R()*2)+(R()-.5),vy:Math.sin(a)*(1+R()*2)+(R()-.5),t:.6,c:pick(['#8a1f2f','#6a1520']),drag:8,stay:1});
   if(u.team===1){S.kills++;sfx('kill');u.seen=true;if(src){src.kills++;say(src,pick(['¡ABATIDO!','¡NEUTRALIZADO!','¡TANGO ABAJO!']));radio(src.n,pick(['Objetivo abatido.','Tango neutralizado.','Uno menos.']),src.col)}
     if(S.M.type==='elim'){const left=S.ens.filter(e=>e.alive).length;if(left===1)radio('CENTRAL','Queda un objetivo.','#ffcd75')}}
-  else{sfx('down');radio(u.n,'¡Operador caído!',u.col);S.shake=Math.max(S.shake,3);if(!S.ops.some(o=>o.alive))endGame(false,'Todo el equipo ha caído.')}}
+  else{sfx('down');radio(u.n,'¡Operador caído!',u.col);if(u.player)endGame(false,'El líder ha caído.');S.shake=Math.max(S.shake,3);if(!S.ops.some(o=>o.alive))endGame(false,'Todo el equipo ha caído.')}}
 function goCode(k){let any=false;for(const o of S.ops)if(o.alive&&o.wait===k){o.wait=null;any=true;say(o,'¡GO!')}sfx('go');radio('TÚ','Código '+k+': ¡adelante, adelante!','#a7f070');if(!any)S.pendingGo=null}
 
 /* ================= UPDATE ================= */
@@ -336,6 +396,7 @@ function update(dt){
   if(S.M.type==='bomb'&&!S.over){S.bombT-=dt;const iv=S.bombT<30?.5:1;if(S.t-S.lastBeep>iv){S.lastBeep=S.t;sfx('beep')}if(S.bombT<=0){S.bombT=0;S.boom=1;S.white=1;sfx('breach');sfx('flash');endGame(false,'La bomba explotó.')}}
   for(const o of S.ops)updOp(o,dt);
   for(const e of S.ens)updEn(e,dt);
+  updClears(dt);for(const pg of S.pings)pg.t-=dt;S.pings=S.pings.filter(pg=>pg.t>0);
   /* hostages */
   for(const h of S.hos){if(h.dead||h.secured)continue;for(const o of S.ops)if(o.alive&&hyp(o.x-h.x,o.y-h.y)<1.25&&los(o.x,o.y,h.x,h.y)){h.secured=true;sfx('secure');say(o,'¡REHÉN ASEGURADO!','#a7f070');radio(o.n,'Rehén asegurado.',o.col);break}}
   /* bomb */
@@ -356,12 +417,13 @@ function update(dt){
     if(M.type==='rescue'&&S.hos.every(h=>h.secured))endGame(true,'Rehenes a salvo.');
     if(M.type==='bomb'&&S.bomb&&S.bomb.done)endGame(true,'Bomba desactivada.')}}
 function stepToward(u,tx,ty,sp,dt){const dx=tx-u.x,dy=ty-u.y,d=hyp(dx,dy),s=sp*dt;if(d<=s){u.x=tx;u.y=ty;return true}u.x+=dx/d*s;u.y+=dy/d*s;u.moving=true;u.moveAng=Math.atan2(dy,dx);return false}
-function updOp(o,dt){o.hitT-=dt;if(!o.alive)return;o.react-=dt;o.cd-=dt;o.moving=false;
+function updOp(o,dt){o.hitT-=dt;if(!o.alive)return;if(o.player){updPlayer(o,dt);return}o.react-=dt;o.cd-=dt;o.moving=false;
   let best=null,bd=1e9;for(const e of S.ens){if(!e.alive)continue;if(!canSee(o,e,OPFOV,o.w.range+3))continue;const d=hyp(e.x-o.x,e.y-o.y)-(e.target===o?3:0)-(e.stun>0?-2:0);if(d<bd){bd=d;best=e}}
   if(best){if(!o.target){o.react=Math.max(o.react,.32+R()*.18);if(S.t-o.lastCall>4){o.lastCall=S.t;say(o,'¡CONTACTO!');sfx('radio',1.2)}}o.target=best}else o.target=null;
   if(o.busy>0){o.busy-=dt;if(o.busy<=0&&o.busyFn){const f=o.busyFn;o.busyFn=null;o.busyTxt='';f()}}
   else if(o.wait){}
   else{
+    if(o.order&&!o.plan.length&&!o.cur)runOrder(o,dt);
     if(!o.path.length&&o.cur)arrive(o);
     else if(!o.path.length&&!o.cur&&o.plan.length){o.cur=o.plan.shift();o.path=o.cur.nodes.slice()}
     if(o.path.length&&o.busy<=0&&!o.wait){const[nx,ny]=o.path[0],dr=doorAt(nx,ny);
@@ -458,18 +520,21 @@ function render(){
   if(!S.over)drawPlans();
   /* door mode icons */
   for(const dr of doors.values())if(dr.state===0&&dr.mode!=='abrir'){c.drawImage(dr.mode==='flash'?IC.flash:IC.kick,X(dr.x)+3,Y(dr.y)+3)}
-  if(S.tool==='puerta')for(const dr of doors.values())if(dr.state===0)ringP(X(dr.x+.5),Y(dr.y+.5),7,'#ffcd7590');
+  if(S.tool==='puerta'||S.tool==='despejar')for(const dr of doors.values())if(dr.state===0||S.tool==='despejar')ringP(X(dr.x+.5),Y(dr.y+.5),7,S.tool==='despejar'?'#ef7d5790':'#ffcd7590');
+  for(const pg of S.pings){const k=1-pg.t/.7;ringP(X(pg.x),Y(pg.y),3+k*9,pg.col);ringP(X(pg.x),Y(pg.y),2,pg.col)}
+  for(const C of S.clears){if(C.phase==='stack')for(const[o,t]of C.stack)if(o.alive){px(X(t[0]+.5)-1,Y(t[1]+.5)-1,o.col+'90',3,3)}}
   for(const f of S.floats){c.globalAlpha=Math.min(1,f.t*3);T(f.s,X(f.x)-TW(f.s)/2,Y(f.y)-6,f.col);c.globalAlpha=1}
   c.restore();
   /* hover preview */
-  if(mouse.x<GW*TS&&mouse.y>=MY&&!S.over){const tx=Math.floor((mouse.x-MX)/TS),ty=Math.floor((mouse.y-MY)/TS);if(inb(tx,ty)){const o=S.ops[S.sel];
+  if(S.mode!=='leader'&&mouse.x<GW*TS&&mouse.y>=MY&&!S.over){const tx=Math.floor((mouse.x-MX)/TS),ty=Math.floor((mouse.y-MY)/TS);if(inb(tx,ty)){const o=S.ops[S.sel];
     if(S.tool==='mover'&&o&&o.alive){const ok=passable(tx,ty);px(X(tx),Y(ty),ok?'#ffffff22':'#ff4d6d33',TS,TS);ringP(X(tx+.5),Y(ty+.5),3,ok?o.col:'#ff4d6d')}
     else if(S.tool==='flash'&&o){const[lx,ly]=lastPoint(o),d=hyp(tx-lx,ty-ly);ringP(mouse.x,mouse.y,5*TS/TS*4,d<=8?'#f4f4f4':'#ff4d6d');lineP(X(lx+.5),Y(ly+.5),mouse.x,mouse.y,d<=8?'#f4f4f480':'#ff4d6d80',1,2)}
     else if(S.tool==='mirar'&&o){const[lx,ly]=lastPoint(o);lineP(X(lx+.5),Y(ly+.5),mouse.x,mouse.y,'#ffcd7580',1,2)}}}
+  if(S.mode==='leader'&&!S.over&&mouse.x<GW*TS&&mouse.y>=MY){const x=Math.round(mouse.x),y=Math.round(mouse.y),L=S.ops[0],sp=L.moving?4:2;for(const[dx,dy]of[[1,0],[-1,0],[0,1],[0,-1]]){px(x+dx*sp,y+dy*sp,'#0b0d14',dx?3:1,dy?3:1);px(x+dx*(sp+1)-(dx<0?1:0),y+dy*(sp+1)-(dy<0?1:0),'#f4f4f4',dx?2:1,dy?2:1)}px(x,y,'#ff4d6d')}
   if(S.white>0){c.fillStyle=`rgba(255,255,250,${Math.min(1,S.white)})`;c.fillRect(0,0,VW,VH)}
   drawUI();
   if(S.slow>0){px(MX,MY,'#00000000');T('BRECHA',GW*TS/2-TW('BRECHA',2)/2,MY+6,'#ffffff90',2,null)}
-  if(S.paused&&!S.over){const s=S.started?'PAUSA - DA ÓRDENES':'PLANIFICACIÓN';const w=TW(s)+10;px(GW*TS/2-w/2,MY+4,'#0b0d14d0',w,11);T(s,GW*TS/2-TW(s)/2,MY+7,(S.t*2|0)%2&&S.started?'#ffcd75':'#a7f070')}
+  if(S.paused&&!S.over){const s=S.mode==='leader'?'PAUSA':S.started?'PAUSA - DA ÓRDENES':'PLANIFICACIÓN';const w=TW(s)+10;px(GW*TS/2-w/2,MY+4,'#0b0d14d0',w,11);T(s,GW*TS/2-TW(s)/2,MY+7,(S.t*2|0)%2&&S.started?'#ffcd75':'#a7f070')}
   present()}
 function drawPlans(){for(const o of S.ops){if(!o.alive)continue;const sel=S.sel===o.id,col=o.col;c.globalAlpha=sel?1:.5;
   let px0=X(o.x),py0=Y(o.y);const segs=[];if(o.path.length)segs.push({nodes:o.path,w:o.cur});else if(o.cur)segs.push({nodes:[],w:o.cur});for(const w of o.plan)segs.push({nodes:w.nodes,w});
@@ -501,10 +566,18 @@ function drawUI(){UI.length=0;const M=S.M;
     T(o.d.role,x+14,y+10,'#6b7a90',1,null);
     px(x+3,y+17,'#0b0d14',44,4);px(x+4,y+18,'#3a1018',42,2);px(x+4,y+18,o.hp>o.max*.5?'#a7f070':'#ff4d6d',Math.round(42*o.hp/o.max),2);
     for(let k=0;k<o.fl;k++)c.drawImage(IC.fl,x+50+k*6,y+15);
-    const st=!o.alive?'CAÍDO':o.busy>0?o.busyTxt:o.wait?'ESPERA '+o.wait:o.target?'COMBATE':o.path.length||o.plan.length||o.cur?(S.started?'MOVIENDO':'RUTA'):'LISTO';
+    const od=o.order,st=!o.alive?'CAÍDO':o.player?'TÚ':o.busy>0?o.busyTxt:o.wait?'ESPERA '+o.wait:o.target?'COMBATE':od&&od.k==='clear'?({stack:'APILANDO',breach:'BRECHA',enter:'ENTRANDO'}[od.C.phase]||'DESPEJE'):od&&od.k==='follow'?'TE SIGUE':o.path.length||o.plan.length||o.cur?(S.started?'MOVIENDO':'RUTA'):od&&od.k==='hold'?'ALTO':'LISTO';
     T(st,x+w-TW(st)-3,y+10,!o.alive?'#ff4d6d':o.wait?'#ffcd75':o.target?'#ff6b6b':'#94b0c2',1,null);
     UI.push({x,y,w,h:23,on:()=>{S.sel=i;sfx('radio',1+i*.1)}})});
   const by=MY+105,bx=PX+1,bw=45,o=S.ops[S.sel];
+  if(S.mode==='leader'){const L=S.ops[0];
+    btn(bx,by,bw,15,'SÍGANME',()=>allOrder('follow'),{key:'Q',col:'#a7f070',on:S.ops.some(q=>q.alive&&!q.player&&q.order&&q.order.k==='follow')});
+    btn(bx+bw+1,by,bw,15,'ALTO',()=>allOrder('hold'),{key:'E'});
+    btn(bx,by+17,bw,15,'FLASH '+L.fl,()=>{if(L.alive)throwFlash(L,(mouse.x-MX)/TS,(mouse.y-MY)/TS)},{key:'G',dis:L.fl<=0});
+    btn(bx+bw+1,by+17,bw,15,'PATEAR',()=>{if(L.alive)playerKick(L)},{key:'F'});
+    ['WASD: MOVERTE','RATÓN: APUNTAR','CLIC: DISPARAR','CHOCA CON PUERTA: ABRIR','','CLIC DERECHO - ORDEN:',' EN PUERTA: DESPEJAR',' EN REHÉN: ASEGURAR',' EN SUELO: IR AHÍ'].forEach((l,i)=>T(l,bx+1,by+38+i*7,i>=5?'#ffcd75':'#6b7a90',1,null));
+    btn(bx,VH-24,bw*2+1,20,S.paused?'CONTINUAR':'PAUSA',()=>togglePause(),{on:S.paused,col:'#a7f070'});
+    S.log.forEach((l,i)=>{if(l.t<=0)return;const y=MY+GH*TS-9-i*8;const s2=l.who.toUpperCase()+': '+l.s;c.globalAlpha=Math.min(1,l.t)*(1-i*.18);px(2,y-1,'#0b0d14b0',TW(s2)+4,7);T(l.who.toUpperCase()+':',4,y,l.col,1,null);T(l.s,4+TW(l.who.toUpperCase()+': '),y,'#e8ecef',1,null);c.globalAlpha=1});return}
   const tools=[['mover','MOVER','M'],['mirar','MIRAR','L'],['flash','FLASH','F'],['puerta','PUERTA','P']];
   tools.forEach(([k,l,key],i)=>btn(bx+(i%2)*(bw+1),by+(i/2|0)*14,bw,13,l,()=>{S.tool=S.tool===k&&k!=='mover'?'mover':k;sfx('click')},{on:S.tool===k,key}));
   btn(bx,by+28,bw,13,'CÓDIGO',()=>cycleHold(),{key:'C'});
@@ -512,11 +585,13 @@ function drawUI(){UI.length=0;const M=S.M;
   btn(bx,by+42,bw,13,'BORRAR',()=>clearPlan(),{key:'X'});
   btn(bx+bw+1,by+42,bw,13,'VEL x'+S.speed,()=>{S.speed=S.speed===1?2:1;sfx('click')},{});
   const waitA=S.ops.some(o=>o.alive&&o.wait==='A'),waitB=S.ops.some(o=>o.alive&&o.wait==='B');
-  btn(bx,by+60,bw,17,'GO A',()=>goCode('A'),{on:waitA&&(S.t*3|0)%2,col:'#ffcd75',key:''});
-  btn(bx+bw+1,by+60,bw,17,'GO B',()=>goCode('B'),{on:waitB&&(S.t*3|0)%2,col:'#73eff7'});
-  const help={mover:['CLIC: PUNTO DE RUTA','CLIC EN SOLDADO: ELEGIR','DER: DESHACER'],mirar:['CLIC: HACIA DÓNDE','MIRA AL LLEGAR AL','ÚLTIMO PUNTO'],flash:['CLIC: LANZA UN FLASH','DESDE EL ÚLTIMO PUNTO','MÁX 8 CASILLAS'],puerta:['CLIC EN PUERTA:','ABRIR > PATEAR >','PATEAR + FLASH']}[S.tool];
-  help.forEach((l,i)=>T(l,bx+1,by+82+i*7,'#6b7a90',1,null));
-  if(o&&!o.alive)T('OPERADOR CAÍDO',bx+1,by+106,'#ff4d6d',1,null);
+  btn(bx,by+56,bw,13,'DESPEJAR',()=>{S.tool=S.tool==='despejar'?'mover':'despejar';sfx('click')},{on:S.tool==='despejar',col:'#ef7d57',key:'R'});
+  btn(bx+bw+1,by+56,bw,13,'TODOS',()=>{S.tool=S.tool==='todos'?'mover':'todos';sfx('click')},{on:S.tool==='todos',col:'#a7f070',key:'T'});
+  btn(bx,by+72,bw,15,'GO A',()=>goCode('A'),{on:waitA&&(S.t*3|0)%2,col:'#ffcd75',key:''});
+  btn(bx+bw+1,by+72,bw,15,'GO B',()=>goCode('B'),{on:waitB&&(S.t*3|0)%2,col:'#73eff7'});
+  const help={mover:['CLIC: PUNTO DE RUTA','CLIC EN SOLDADO: ELEGIR','DER: DESHACER'],mirar:['CLIC: HACIA DÓNDE','MIRA AL LLEGAR AL','ÚLTIMO PUNTO'],flash:['CLIC: LANZA UN FLASH','DESDE EL ÚLTIMO PUNTO','MÁX 8 CASILLAS'],puerta:['CLIC EN PUERTA:','ABRIR > PATEAR >','PATEAR + FLASH'],despejar:['CLIC EN UNA PUERTA:','TODO EL EQUIPO SE','APILA, ENTRA Y LIMPIA'],todos:['CLIC EN EL MAPA:','TODO EL EQUIPO VA','A ESA ZONA']}[S.tool];
+  help.forEach((l,i)=>T(l,bx+1,by+92+i*7,'#6b7a90',1,null));
+  if(o&&!o.alive)T('OPERADOR CAÍDO',bx+1,by+115,'#ff4d6d',1,null);
   const label=!S.started?'¡EJECUTAR!':S.paused?'CONTINUAR':'PAUSA';
   btn(bx,VH-24,bw*2+1,20,label,()=>togglePause(),{on:!S.started||S.paused,col:'#a7f070'});
   /* radio log */
@@ -526,13 +601,15 @@ function drawUI(){UI.length=0;const M=S.M;
 function togglePause(){if(S.over)return;if(!S.started){S.started=true;S.paused=false;radio('TÚ','Equipo Halcón, ¡ejecuten!','#a7f070');return}S.paused=!S.paused;sfx('click')}
 function cycleHold(){const o=S.ops[S.sel];if(!o||!o.alive)return;const w=lastWp(o,true);w.hold=w.hold===null?'A':w.hold==='A'?'B':null;sfx('click')}
 function undo(){const o=S.ops[S.sel];if(!o)return;if(o.plan.length){o.plan.pop();sfx('click')}else if(o.cur||o.path.length){o.cur=null;o.path=o.path.slice(0,1);sfx('click')}else sfx('deny')}
-function clearPlan(){const o=S.ops[S.sel];if(!o)return;o.plan=[];o.cur=null;o.path=o.path.slice(0,1);if(o.wait)o.wait=null;sfx('click')}
+function clearPlan(){const o=S.ops[S.sel];if(!o)return;o.order=null;o.plan=[];o.cur=null;o.path=o.path.slice(0,1);if(o.wait)o.wait=null;sfx('click')}
 function mapClick(fx,fy,right){const o=S.ops[S.sel],tx=Math.floor(fx),ty=Math.floor(fy);
   if(right){if(S.tool!=='mover'){S.tool='mover';return}undo();return}
   if(S.tool==='puerta'){let best=null,bd=1.2;for(const dr of doors.values()){const d=hyp(dr.x+.5-fx,dr.y+.5-fy);if(d<bd&&dr.state===0){bd=d;best=dr}}if(best){best.mode=best.mode==='abrir'?'patear':best.mode==='patear'?'flash':'abrir';sfx('click')}else sfx('deny');return}
+  if(S.tool==='despejar'){let best=null,bd=1.2;for(const dr of doors.values()){const d=hyp(dr.x+.5-fx,dr.y+.5-fy);if(d<bd){bd=d;best=dr}}const list=S.ops.filter(q=>q.alive);if(best&&orderClear(best,list)){ping(best.x+.5,best.y+.5,'#ef7d57');S.tool='mover';sfx('go')}else sfx('deny');return}
+  if(S.tool==='todos'){const list=S.ops.filter(q=>q.alive);if(passable(tx,ty)&&orderGoto(list,fx,fy)){ping(fx,fy,'#a7f070');radio('TÚ','Todo el equipo a esa posición.','#a7f070');S.tool='mover';sfx('go')}else sfx('deny');return}
   if(S.tool==='mover'){for(const q of S.ops)if(q.alive&&hyp(q.x-fx,q.y-fy)<.7){S.sel=q.id;sfx('radio',1+q.id*.1);return}}
   if(!o||!o.alive){sfx('deny');return}
-  if(S.tool==='mover'){if(!passable(tx,ty)){sfx('deny');return}const[lx,ly]=lastPoint(o);if(lx===tx&&ly===ty){sfx('deny');return}const p=astar(lx,ly,tx,ty);if(!p){sfx('deny');return}o.plan.push({tx,ty,nodes:p,look:null,flash:null,hold:null});sfx('click')}
+  if(S.tool==='mover'){if(!passable(tx,ty)){sfx('deny');return}const[lx,ly]=lastPoint(o);if(lx===tx&&ly===ty){sfx('deny');return}const p=astar(lx,ly,tx,ty);if(!p){sfx('deny');return}o.plan.push({tx,ty,nodes:p,look:null,flash:null,hold:null});o.order=null;sfx('click')}
   else if(S.tool==='mirar'){const w=lastWp(o,true);w.look=Math.atan2(fy-(w.ty+.5),fx-(w.tx+.5));sfx('click');S.tool='mover'}
   else if(S.tool==='flash'){const w=lastWp(o,true);if(!w.flash&&flashesPlanned(o)>=o.fl){sfx('deny');radio(o.n,'No me quedan flashes.',o.col);return}if(hyp(fx-(w.tx+.5),fy-(w.ty+.5))>8.5){sfx('deny');return}w.flash={x:fx,y:fy};sfx('click');S.tool='mover'}}
 
@@ -542,14 +619,17 @@ cv.addEventListener('pointermove',e=>{[mouse.x,mouse.y]=toV(e)});
 cv.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(!S||modal.classList.contains('on'))return;[mouse.x,mouse.y]=toV(e);
   if(e.button!==2)for(let i=UI.length-1;i>=0;i--){const u=UI[i];if(mouse.x>=u.x&&mouse.x<u.x+u.w&&mouse.y>=u.y&&mouse.y<u.y+u.h){if(u.on)u.on();return}}
   if(S.over)return;
-  if(mouse.x>=MX&&mouse.x<MX+GW*TS&&mouse.y>=MY&&mouse.y<MY+GH*TS)mapClick((mouse.x-MX)/TS,(mouse.y-MY)/TS,e.button===2)});
+  if(mouse.x>=MX&&mouse.x<MX+GW*TS&&mouse.y>=MY&&mouse.y<MY+GH*TS){if(S.mode==='leader'){if(S.paused&&e.button===0){togglePause();return}if(e.button===2)contextCmd((mouse.x-MX)/TS,(mouse.y-MY)/TS);else S.firing=true}else mapClick((mouse.x-MX)/TS,(mouse.y-MY)/TS,e.button===2)}});
+addEventListener('pointerup',()=>{if(S)S.firing=false});
+const keys={};addEventListener('keyup',e=>{keys[e.code]=false});addEventListener('blur',()=>{for(const k in keys)keys[k]=false;if(S)S.firing=false});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
-addEventListener('keydown',e=>{if(!S||modal.classList.contains('on'))return;audioInit();const k=e.code;
+addEventListener('keydown',e=>{keys[e.code]=true;if(!S||modal.classList.contains('on'))return;audioInit();const k=e.code;
+  if(S.mode==='leader'){if(k==='Space'){e.preventDefault();togglePause()}else if(k==='Escape')pauseMenu();else if(S.over||S.paused){}else if(k==='KeyQ')allOrder('follow');else if(k==='KeyE')allOrder('hold');else if(k==='KeyG'){const L=S.ops[0];if(L.alive)throwFlash(L,(mouse.x-MX)/TS,(mouse.y-MY)/TS)}else if(k==='KeyF'){const L=S.ops[0];if(L.alive&&L.busy<=0)playerKick(L)}if(k.startsWith('Arrow'))e.preventDefault();return}
   if(/^Digit[1-4]$/.test(k)){S.sel=+k.slice(5)-1;sfx('radio',1+S.sel*.1)}
   else if(k==='Tab'){e.preventDefault();for(let i=1;i<=4;i++){const j=(S.sel+i)%4;if(S.ops[j].alive){S.sel=j;break}}sfx('radio')}
   else if(k==='Space'){e.preventDefault();togglePause()}
   else if(k==='KeyM')S.tool='mover';else if(k==='KeyL')S.tool=S.tool==='mirar'?'mover':'mirar';else if(k==='KeyF')S.tool=S.tool==='flash'?'mover':'flash';else if(k==='KeyP')S.tool=S.tool==='puerta'?'mover':'puerta';
-  else if(k==='KeyC')cycleHold();else if(k==='KeyZ')undo();else if(k==='KeyX')clearPlan();
+  else if(k==='KeyR')S.tool=S.tool==='despejar'?'mover':'despejar';else if(k==='KeyT')S.tool=S.tool==='todos'?'mover':'todos';else if(k==='KeyC')cycleHold();else if(k==='KeyZ')undo();else if(k==='KeyX')clearPlan();
   else if(k==='KeyA'&&S.started&&!S.over)goCode('A');else if(k==='KeyB'&&S.started&&!S.over)goCode('B');
   else if(k==='Escape'){if(S.tool!=='mover')S.tool='mover';else pauseMenu()}});
 
@@ -568,7 +648,9 @@ function briefing(mi){newGame(mi);const M=MISSIONS[mi];
   <li><b>PUERTA</b> <kbd>P</kbd>: clic en una puerta para elegir abrir, patear o patear + flash.</li>
   <li><b>FLASH</b> <kbd>F</kbd>, <b>MIRAR</b> <kbd>L</kbd> y <b>CÓDIGO</b> <kbd>C</kbd> se aplican al último punto de la ruta. Con un código, el operador espera hasta que pulses <b>GO A</b> o <b>GO B</b> (<kbd>A</kbd>/<kbd>B</kbd>).</li>
   <li><kbd>Espacio</kbd> ejecuta o pausa. En pausa puedes seguir dando órdenes. <b>Clic derecho</b> deshace.</li></ul>
-  <div class="row"><button class="btn alt" data-act="menu">MISIONES</button><button class="btn" data-act="go">PLANIFICAR</button></div>`)}
+  <p><b>Órdenes rápidas:</b> <b>DESPEJAR</b> <kbd>R</kbd> + clic en una puerta y todo el equipo se apila, hace la brecha con flash y limpia el cuarto solo. <b>TODOS</b> <kbd>T</kbd> + clic manda a todo el equipo a esa zona.</p>
+  <h2 style="margin-top:16px">MODO LÍDER</h2><p class="note">Controlas tú al Líder: <kbd>WASD</kbd> para moverte, ratón para apuntar y clic para disparar. <b>Clic derecho</b> da órdenes al equipo: en una puerta despejan el cuarto, en un rehén lo aseguran y en el suelo van ahí. <kbd>Q</kbd> síganme · <kbd>E</kbd> alto · <kbd>G</kbd> flash · <kbd>F</kbd> patear puerta. Si caes, la misión falla.</p>
+  <div class="row"><button class="btn alt" data-act="menu">MISIONES</button><button class="btn alt" data-act="leader">MODO LÍDER</button><button class="btn" data-act="go">MANDO TÁCTICO</button></div>`)}
 function pauseMenu(){if(!S||S.over)return;open(`<h2>PAUSA</h2><p>${S.M.n} · ${Math.floor(S.time)} s · ${S.kills} abatidos</p><div class="row"><button class="btn alt" data-act="menu">MISIONES</button><button class="btn alt" data-act="retry">REINICIAR</button><button class="btn" data-act="go">SEGUIR</button></div>`)}
 function showResult(){const win=S.win,down=S.ops.filter(o=>!o.alive).length,st=win?1+(down===0?1:0)+(S.time<=S.M.par?1:0):0;
   if(win){save.stars[MI]=Math.max(save.stars[MI],st);store()}
@@ -578,7 +660,7 @@ function showResult(){const win=S.win,down=S.ops.filter(o=>!o.alive).length,st=w
   <div class="row"><button class="btn alt" data-act="menu">MISIONES</button><button class="btn ${win?'alt':''}" data-act="retry">REINTENTAR</button>${win&&MI<MISSIONS.length-1?'<button class="btn" data-act="next">SIGUIENTE</button>':''}</div>`)}
 modal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;audioInit();sfx('click');
   if(b.dataset.m!==undefined&&!b.disabled){briefing(+b.dataset.m);return}
-  const a=b.dataset.act;if(a==='go'){close()}else if(a==='menu')title();else if(a==='retry'){briefing(MI)}else if(a==='next'){briefing(MI+1)}});
+  const a=b.dataset.act;if(a==='leader'){newGame(MI,'leader');close()}else if(a==='go'){if(S&&S.mode==='leader'&&!S.over&&S.time>0){}close()}else if(a==='menu')title();else if(a==='retry'){briefing(MI)}else if(a==='next'){briefing(MI+1)}});
 
 /* ================= LOOP ================= */
 let last=performance.now(),acc=0;
