@@ -57,6 +57,12 @@ ul{padding-left:18px;margin:8px 0}
 .sum{display:flex;gap:14px;align-items:flex-start}.sum img{width:220px;max-width:40%;image-rendering:pixelated;box-shadow:0 0 0 2px #000}
 .sumh{cursor:pointer;font:11px "Press Start 2P",monospace;color:var(--amber);margin:8px 0}
 .msg{background:#0b0d14;padding:8px 12px;margin-bottom:10px;box-shadow:inset 3px 0 0 #a7f070}
+.tutx{}
+#tut{display:none;position:fixed;inset:0;z-index:8;pointer-events:none}
+#tut .tbox{position:fixed;width:min(380px,calc(100vw - 20px));background:#10151e;padding:16px 18px;pointer-events:auto;box-shadow:0 0 0 3px #000,0 0 0 6px #ffcd75,0 0 0 9px #000,0 12px 0 9px #0008}
+#tut h3{font:13px/1.4 "Press Start 2P",monospace;color:var(--amber);margin:4px 0 10px}
+#tut p{font-size:16px;margin:0 0 14px}#tut .tstep{font:9px "Press Start 2P",monospace;color:#566c86}
+#tut .trow{display:flex;gap:8px;align-items:center}
 .tmenu{display:grid;gap:10px;max-width:340px;margin:18px auto 4px}.tmenu .btn{min-height:50px}
 @media(max-width:560px){.hub{grid-template-columns:1fr}.sum{flex-direction:column}.sum img{max-width:100%}}
 li{margin:3px 0}
@@ -68,6 +74,7 @@ kbd{font:11px "Press Start 2P",monospace;background:#333c57;padding:2px 5px;box-
 <body>
 <canvas id="cv"></canvas>
 <div class="modal" id="modal"><div class="box" id="box"></div></div>
+<div id="tut"></div>
 <script>
 {
 const R=Math.random,clamp=(v,a,b)=>v<a?a:v>b?b:v,pick=a=>a[R()*a.length|0],lerp=(a,b,t)=>a+(b-a)*t,$=id=>document.getElementById(id),hyp=Math.hypot;
@@ -931,7 +938,7 @@ function drawUI(){UI.length=0;const M=S.M;
   if(S.started&&(wA||wB)){let gx=GW*TS/2-(wA&&wB?82:40);if(wA){btn(gx,MY+26,80,20,'¡GO A!',()=>goCode('A'),{col:'#ffcd75',on:(S.t*3|0)%2,key:'A'});gx+=84}if(wB)btn(gx,MY+26,80,20,'¡GO B!',()=>goCode('B'),{col:'#73eff7',on:(S.t*3|0)%2,key:'B'})}
   const lx=S.mode==='leader'&&S.touch?80:6;
   S.log.forEach((l,i)=>{if(l.t<=0)return;const y=MY+GH*TS-12-i*10;const s2=l.who.toUpperCase()+': '+l.s;c.globalAlpha=Math.min(1,l.t)*(1-i*.18);px(lx-3,y-2,'#0b0d14c8',TW(s2)+6,9);T(l.who.toUpperCase()+':',lx,y,l.col,1,null);T(l.s,lx+TW(l.who.toUpperCase()+': '),y,'#e8ecef',1,null);c.globalAlpha=1});
-  drawWheel()}
+  drawWheel();drawTutSpot()}
 function togglePause(){if(S.over)return;if(!S.started){S.started=true;S.paused=false;radio('TÚ','¡Máscaras puestas! ¡Adentro!','#a7f070');return}S.paused=!S.paused;sfx('click')}
 function cycleHold(){const o=S.ops[S.sel];if(!o||!o.alive)return;const w=lastWp(o,true);w.hold=w.hold===null?'A':w.hold==='A'?'B':null;sfx('click')}
 function undo(){const o=S.ops[S.sel];if(!o)return;if(o.plan.length){o.plan.pop();sfx('click')}else if(o.cur||o.path.length){o.cur=null;o.path=o.path.slice(0,1);sfx('click')}else sfx('deny')}
@@ -949,11 +956,43 @@ function mapClick(fx,fy,right){const o=S.ops[S.sel],tx=Math.floor(fx),ty=Math.fl
   else if(S.tool==='mirar'){const w=lastWp(o,true);w.look=Math.atan2(fy-(w.ty+.5),fx-(w.tx+.5));sfx('click');S.tool='mover'}
   else if(S.tool==='flash'){const w=lastWp(o,true);if(!w.flash&&flashesPlanned(o)>=o.fl){sfx('deny');radio(o.n,'No me quedan flashes.',o.col);return}if(hyp(fx-(w.tx+.5),fy-(w.ty+.5))>8.5){sfx('deny');return}w.flash={x:fx,y:fy};sfx('click');S.tool='mover'}}
 
+/* ================= TUTORIAL ================= */
+let TUT_DONE=false;try{TUT_DONE=localStorage.getItem('golpe-tut')==='1'}catch(e){}
+const tutEl=$('tut');
+function tutSteps(){const L=S.mode==='leader',V=S.vault,cards=[PX-1,MY+22,160,4*44+4];
+  const camR=S.cams.length?[X(S.cams[0].x)-50,Y(S.cams[0].y)-40,100,80]:[MX,MY,GW*TS,GH*TS];
+  let vr=null;if(S.vanT.length){let x0=99,y0=99,x1=0,y1=0;for(const[x,y]of S.vanT){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y)}vr=[X(x0)-10,Y(y0)-26,(x1-x0+1)*TS+20,(y1-y0+1)*TS+34]}
+  return[
+  {t:'¡Bienvenido a El Gran Golpe!',p:'Eres el cerebro de una banda de ladrones. La meta: entrar al banco, abrir la <b>bóveda</b>, llevar las <b>bolsas</b> a la <b>camioneta</b> y escapar antes de que llegue la <b>policía</b>.<br><br>Este recorrido te enseña lo básico en un minuto.',r:null},
+  {t:'El botín y el reloj',p:'Aquí ves cuántas bolsas llevas y el dinero del golpe. A la derecha, <b>cuánto falta para que llegue la policía</b>. Si suena la alarma, el reloj baja a 40 segundos.',r:[258,0,330,22]},
+  {t:'Tu banda',p:'Cada tarjeta es un miembro: retrato, clase, nivel y lo que está haciendo.<br>La barra <b style="color:#a7f070">verde</b> es la vida y la <b style="color:#73eff7">azul</b> son los <b>nervios</b>. Con los nervios bajos fallan disparos, desobedecen, se paralizan, se rinden o huyen.',r:cards},
+  {t:'Elige a quién mandar',p:L?'Tú controlas al primero de la banda. Para mandar a los demás, toca la tarjeta de uno (teclas 2–4) o elige a <b>toda la banda</b> con el botón de arriba (tecla 1).':'Toca una <b>tarjeta</b>, el personaje en el mapa o las teclas <b>1–4</b> para elegir a una persona. El botón de arriba elige a <b>toda la banda</b> (tecla E). Los elegidos se marcan con su color.',r:[PX-1,MY+1,160,4*44+26]},
+  {t:'La rueda de órdenes',p:L?'<b>Clic izquierdo</b>: caminas tú (también WASD). Disparas solo cuando ves a un enemigo.<br><b>Clic derecho</b> (o mantener pulsado en el móvil): abre la <b>rueda de órdenes</b> para los compañeros elegidos. Las opciones cambian según lo que toques: suelo, puerta, bóveda, panel, bolsa…':'Con alguien elegido, haz <b>clic en el mapa</b>: aparece una <b>rueda</b> con las órdenes posibles según lo que tocaste.<br>Suelo: ir, esperar código A/B, mirar, flash. Puerta: despejar cuarto, abrir, patear o flash y entrar. Elige con clic o con el número.',r:[MX,MY,GW*TS,GH*TS]},
+  {t:'Los objetivos',p:'Los carteles en el mapa te guían: <b>PANEL</b> (si lo cortas no hay cámaras ni alarma), <b>BÓVEDA</b> (el Técnico la taladra rápido; Explosivos la vuela con C4) y <b>CAMIONETA</b>. Aquí ves tu progreso.',r:[PX-1,MY+24+4*44+8,160,60]},
+  {t:'Cuidado con…',p:'Las <b>cámaras</b> (cono amarillo) dan la alarma si te ven unos segundos. Los <b>guardias</b> alertados corren a activarla, y los <b>empleados</b> asustados también: acércate a ellos para que se tiren al suelo.',r:camR},
+  {t:'Cargar y huir',p:'Haz clic en una bolsa o en la camioneta y elige <b>CARGAR BOTÍN</b>: la banda lleva las bolsas sola. Cuando estén dentro, pulsa <b>¡HUIR!</b>. Quien se quede fuera, lo arrestan.',r:vr},
+  {t:'Controles',p:L?'<b>PAUSA</b> (Espacio), <b>Tiempo Halcón</b> (el tiempo casi se detiene si no te mueves) y <b>¡HUIR!</b> están aquí.':'<b>¡A TRABAJAR!</b> (Espacio) empieza el golpe. Puedes pausar cuando quieras y seguir dando órdenes. <b>VELOCIDAD</b> y <b>¡HUIR!</b> también están aquí. Si alguien espera un código, arriba aparece <b>¡GO A!</b>.',r:[PX-1,VH-48,160,48]},
+  {t:'Menú y este tutorial',p:'En <b>MENÚ</b> puedes pausar, abrir los <b>ajustes</b> (pantalla completa, sonido), abortar el golpe o <b>volver a ver este tutorial</b> cuando quieras.<br><br>¡Suerte, y que nadie se quiebre!',r:[648,1,150,20]}]}
+function startTut(){if(!S)return;S.wheel=null;S.tut={i:0};showTut()}
+function showTut(){const st=tutSteps(),i=S.tut.i,s=st[i];tutEl.innerHTML=`<div class="tbox"><div class="tstep">${i+1} / ${st.length}</div><h3>${s.t}</h3><p>${s.p}</p><div class="trow"><button class="btn sm alt" data-t="skip">SALTAR</button><span style="flex:1"></span>${i?'<button class="btn sm alt" data-t="prev">← ATRÁS</button>':''}<button class="btn sm" data-t="next">${i===st.length-1?'¡A ROBAR!':'SIGUIENTE →'}</button></div></div>`;tutEl.style.display='block';placeTut()}
+function placeTut(){if(!S||!S.tut)return;const s=tutSteps()[S.tut.i],b=tutEl.firstElementChild;if(!b)return;const bw=b.offsetWidth,bh=b.offsetHeight,W=innerWidth,H=innerHeight;let L,Tp;
+  if(!s.r){L=(W-bw)/2;Tp=(H-bh)/2}else{const[x,y,w,h]=s.r,cx=(VR.x+x/VW*VR.w)/dpr,cy=(VR.y+y/VH*VR.h)/dpr,cw=w/VW*VR.w/dpr,ch=h/VH*VR.h/dpr;
+    if(cw>W*.5){L=cx+cw/2-bw/2;Tp=cy+ch-bh-30}else if(cx+cw/2>W*.55){L=cx-bw-18;Tp=cy}else{L=cx+cw+18;Tp=cy}
+    if(Tp+bh>H-10)Tp=H-bh-10;if(Tp<10)Tp=10;if(L<10)L=10;if(L+bw>W-10)L=W-bw-10}
+  b.style.left=L+'px';b.style.top=Tp+'px'}
+function tutNav(a){if(!S||!S.tut)return;const n=tutSteps().length;sfx('click');if(a==='next'){if(S.tut.i>=n-1)endTut();else{S.tut.i++;showTut()}}else if(a==='prev'){S.tut.i=Math.max(0,S.tut.i-1);showTut()}else endTut()}
+function endTut(){if(S)S.tut=null;tutEl.style.display='none';tutEl.innerHTML='';TUT_DONE=true;try{localStorage.setItem('golpe-tut','1')}catch(e){}}
+tutEl.addEventListener('click',e=>{const b=e.target.closest('button');if(b)tutNav(b.dataset.t)});
+addEventListener('resize',()=>placeTut());
+function drawTutSpot(){if(!S.tut)return;const s=tutSteps()[S.tut.i];c.fillStyle='rgba(3,4,10,.7)';if(!s.r){c.fillRect(0,0,VW,VH);return}
+  const[x,y,w,h]=s.r.map(Math.round);c.fillRect(0,0,VW,Math.max(0,y));c.fillRect(0,y+h,VW,VH-y-h);c.fillRect(0,y,Math.max(0,x),h);c.fillRect(x+w,y,VW-x-w,h);
+  const p=(Math.sin(S.t*6)+1)/2;c.strokeStyle=`rgba(255,205,117,${.6+p*.4})`;c.lineWidth=2;c.strokeRect(x+1,y+1,w-2,h-2)}
+
 /* ================= INPUT ================= */
 function toV(e){return[(e.clientX*dpr-VR.x)/VR.w*VW,(e.clientY*dpr-VR.y)/VR.h*VH]}
 let jp=null,lp=null;
 cv.addEventListener('pointermove',e=>{[mouse.x,mouse.y]=toV(e);if(S&&jp!==null&&e.pointerId===jp){const dx=mouse.x-JX,dy=mouse.y-JY,l=hyp(dx,dy),m=Math.min(1,l/16);S.joy=l>2?{x:dx/l*m,y:dy/l*m}:null}if(lp&&e.pointerId===lp.id&&hyp(mouse.x-lp.x,mouse.y-lp.y)>7){clearTimeout(lp.tm);lp=null}});
-cv.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(!S||modal.classList.contains('on'))return;[mouse.x,mouse.y]=toV(e);const touch=e.pointerType==='touch';if(touch)S.touch=true;else if(e.pointerType==='mouse')S.touch=false;
+cv.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(!S||modal.classList.contains('on'))return;if(S.tut)return;[mouse.x,mouse.y]=toV(e);const touch=e.pointerType==='touch';if(touch)S.touch=true;else if(e.pointerType==='mouse')S.touch=false;
   if(S.wheel&&!S.over){if(e.button===2){S.wheel=null;return}wheelClick();return}
   if(e.button!==2)for(let i=UI.length-1;i>=0;i--){const u=UI[i];if(mouse.x>=u.x&&mouse.x<u.x+u.w&&mouse.y>=u.y&&mouse.y<u.y+u.h){if(u.on)u.on();return}}
   if(S.over)return;
@@ -971,7 +1010,7 @@ addEventListener('pointercancel',e=>{if(jp===e.pointerId){jp=null;if(S)S.joy=nul
 addEventListener('keydown',e=>{if(e.code==='F11'){e.preventDefault();toggleFS()}});
 const keys={};addEventListener('keyup',e=>{keys[e.code]=false});addEventListener('blur',()=>{for(const k in keys)keys[k]=false});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
-addEventListener('keydown',e=>{keys[e.code]=true;if(!S||modal.classList.contains('on'))return;audioInit();const k=e.code;if(e.key&&e.key.length&&!e.repeat&&k.startsWith('Key'))S.touch=false;
+addEventListener('keydown',e=>{keys[e.code]=true;if(!S||modal.classList.contains('on'))return;audioInit();const k=e.code;if(S.tut){if(k==='ArrowRight'||k==='Enter'||k==='Space'){e.preventDefault();tutNav('next')}else if(k==='ArrowLeft')tutNav('prev');else if(k==='Escape')tutNav('skip');return}if(e.key&&e.key.length&&!e.repeat&&k.startsWith('Key'))S.touch=false;
   if(S.wheel&&/^Digit[1-8]$/.test(k)){wheelKey(+k.slice(5)-1);return}
   if(S.wheel&&k==='Escape'){S.wheel=null;return}
   if(S.mode==='leader'&&/^Digit[1-4]$/.test(k)){const n=+k.slice(5)-1;if(n===0)selAll();else if(S.ops[n]&&able(S.ops[n]))selOne(n);return}
@@ -1064,12 +1103,12 @@ function settingsHTML(){const fs=!!document.fullscreenElement,yn=v=>v?'SÍ':'NO'
   <div class="setrow"><span><b>Tiempo Halcón al empezar (modo líder)</b><br><span class="note">El tiempo casi se detiene cuando no te mueves.</span></span><button class="btn sm ${CFG.halcon?'':'alt'}" data-cfg="halcon">${yn(CFG.halcon)}</button></div>
   <div class="setrow"><span><b>Borrar la carrera</b><br><span class="note">Empiezas de cero con una banda nueva.</span></span><button class="btn sm alt" data-act="reset">BORRAR</button></div>`}
 function openSettings(back){CFG_BACK=back;if(back==='hub'){CUR='settings';hq();return}open(settingsHTML()+`<div class="nav"><button class="btn alt" data-act="cfg-back">← VOLVER</button></div>`)}
-function startHeist(mode){goHeist();if(!MS)return;newGame(mode);S.speed=CFG.speed;S.halcon=CFG.halcon;close();CUR='hub'}
+function startHeist(mode){goHeist();if(!MS)return;newGame(mode);S.speed=CFG.speed;S.halcon=CFG.halcon;close();CUR='hub';if(!TUT_DONE)startTut()}
 function title(){S=null;CUR='hub';open(`<div class="title">EL GRAN<br>GOLPE</div><div class="sub" style="color:#ffcd75">UN BANCO · UN RELOJ · UNA BANDA AL BORDE</div>
   <p>Eres el cerebro de una banda de ladrones. Entra al banco, abre la bóveda, carga las bolsas en la camioneta y escapa antes de que llegue la policía.</p>
   <p class="note">Cada miembro tiene <b>nervios</b>. Las balas, la alarma, las sirenas y ver caer a un compañero los desgastan. Con los nervios rotos fallan disparos, desobedecen, se paralizan, se rinden, colapsan o huyen.</p>
   <div class="tmenu">${GC&&GC.roster?'<button class="btn" data-act="hq">CONTINUAR CARRERA</button><button class="btn alt" data-act="reset">NUEVA CARRERA</button>':'<button class="btn" data-act="newcar">EMPEZAR</button>'}<button class="btn alt" data-act="cfg-title">AJUSTES</button><button class="btn alt" data-act="fs">PANTALLA COMPLETA</button></div>`)}
-function pauseMenu(){if(!S||S.over)return;open(`<h2>PAUSA</h2><p>${S.M.n} · ${fmt(S.bags*BAG+S.cashTaken)} en la camioneta</p><div class="tmenu"><button class="btn" data-act="go">SEGUIR</button><button class="btn alt" data-act="cfg-pause">AJUSTES</button><button class="btn alt" data-act="abort">ABORTAR (HUIR YA)</button></div>`)}
+function pauseMenu(){if(!S||S.over)return;open(`<h2>PAUSA</h2><p>${S.M.n} · ${fmt(S.bags*BAG+S.cashTaken)} en la camioneta</p><div class="tmenu"><button class="btn" data-act="go">SEGUIR</button><button class="btn alt" data-act="tut">TUTORIAL</button><button class="btn alt" data-act="cfg-pause">AJUSTES</button><button class="btn alt" data-act="abort">ABORTAR (HUIR YA)</button></div>`)}
 const policeTime=i=>Math.max(110,BANKINFO[i].police-GC.heat*8+(GC.upg.blindada?15:0));
 function goHeist(){const C=GC,b=PICK.b,sq=C.roster.filter(r=>PICK.sq.has(r.id)).slice(0,4);if(!sq.length)return;sq.sort((a,b2)=>(b2.cls==='cerebro')-(a.cls==='cerebro'));
   const kit={};for(const k in ITEMS){kit[k]=Math.min(PICK.kit[k]||0,C.inv[k]||0);C.inv[k]-=kit[k]}storeGC();
@@ -1127,6 +1166,7 @@ modal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.d
   if(d.upg!==undefined){const u=GINV[d.upg];if(GC.money>=u.cost){GC.money-=u.cost;GC.upg[d.upg]=true;storeGC();sfx('cash')}hq(`Compraste: ${u.n}.`);return}
   const a=d.act;
   if(a==='hq'){CUR='hub';hq()}
+  else if(a==='tut'){close();startTut()}
   else if(a==='cfg-title')openSettings('title');else if(a==='cfg-pause')openSettings('pause');
   else if(a==='cfg-back'){if(CFG_BACK==='pause')pauseMenu();else title()}
   else if(a==='hq-cancel'){for(const k in MS.kit)GC.inv[k]=(GC.inv[k]||0)+MS.kit[k];storeGC();hq()}
@@ -1148,7 +1188,7 @@ let last=performance.now(),acc=0;
 function loop(now){const rdt=Math.min(.05,(now-last)/1000);last=now;
   if(S){if(!S.decals)S.decals=[];
     S.shake=Math.max(0,S.shake-rdt*18);S.white=Math.max(0,S.white-rdt*1.4);for(const l of S.log)l.t-=rdt;
-    if(S.started&&!S.paused&&!modal.classList.contains('on')&&(!S.over||performance.now()-S.endAt<1700)){let sc=S.speed;
+    if(S.started&&!S.paused&&!S.tut&&!modal.classList.contains('on')&&(!S.over||performance.now()-S.endAt<1700)){let sc=S.speed;
       if(S.mode==='leader'){const L=leader();if(S.halcon&&L&&!S.over){leaderMove(L,rdt*S.speed);const tg=L.moving||L.busy>0?1:L.target?.3:.06;S.ts=lerp(S.ts,tg,Math.min(1,rdt*(tg>S.ts?16:5)))}else S.ts=1;sc*=S.ts}
       if(S.wheel)sc*=.15;
       if(S.slow>0){sc*=.35;S.slow-=rdt}acc+=rdt*sc;let n=0;while(acc>=1/60&&n<8){update(1/60);acc-=1/60;n++}if(n>=8)acc=0}
