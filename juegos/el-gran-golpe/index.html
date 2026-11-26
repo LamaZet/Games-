@@ -133,6 +133,12 @@ function present(){uc.imageSmoothingEnabled=false;uc.drawImage(lo,0,0,up.width,u
 /* ================= AUDIO ================= */
 let AC=null,master=null,muted=false;const lastSfx={};
 function audioInit(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.3*CFG.vol/100;master.connect(AC.destination)}catch(e){AC=null}}
+/* Música: menú/escondite vs. golpe en curso; fundido cruzado, respeta volumen y SONIDO */
+const MUS={menu:new Audio('audio/menu.mp3'),game:new Audio('audio/gameplay.mp3')},MUS_GAIN=.55;let musCur=null;
+for(const k in MUS){MUS[k].loop=true;MUS[k].preload='auto';MUS[k].volume=0}
+function musicTick(dt){const want=S?'game':'menu',goal=muted||document.hidden?0:CFG.vol/100*MUS_GAIN;if(want!==musCur)musCur=want;
+  for(const k in MUS){const a=MUS[k],tv=k===musCur?goal:0,v=a.volume,nv=v<tv?Math.min(tv,v+dt*.8):Math.max(tv,v-dt*.8);a.volume=clamp(nv,0,1);
+    if(tv>0&&a.paused)a.play().catch(()=>{});else if(tv===0&&nv===0&&!a.paused)a.pause()}}
 function tone(type,f0,f1,dur,vol=.3,delay=0){const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02)}
 let noiseBuf=null;function noise(dur,vol,fc2,type='lowpass',delay=0){if(!noiseBuf){noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=R()*2-1}
   const t=AC.currentTime+delay,s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=noiseBuf;f.type=type;f.frequency.value=fc2;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t,R()*.5);s.stop(t+dur+.02)}
@@ -1385,7 +1391,7 @@ modal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.d
 
 /* ================= LOOP ================= */
 let last=performance.now(),acc=0;
-function loop(now){const rdt=Math.min(.05,(now-last)/1000);last=now;
+function loop(now){const rdt=Math.min(.05,(now-last)/1000);last=now;musicTick(rdt);
   if(S){if(!S.decals)S.decals=[];updSide(rdt);
     S.shake=Math.max(0,S.shake-rdt*18);S.white=Math.max(0,S.white-rdt*1.4);for(const l of S.log)l.t-=rdt;
     if(S.started&&!S.paused&&!S.tut&&!modal.classList.contains('on')&&(!S.over||performance.now()-S.endAt<1700)){let sc=S.speed;
