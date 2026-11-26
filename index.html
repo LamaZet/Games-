@@ -135,7 +135,7 @@ let AC=null,master=null,muted=false;const lastSfx={};
 function audioInit(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.3*CFG.vol/100;master.connect(AC.destination)}catch(e){AC=null}}
 /* Música: menú/escondite vs. golpe en curso. Al cambiar, la pista actual termina sola si le quedan
    ≤MUS_TAIL s; si le queda más, se apaga con un fundido de MUS_FADE s. La siguiente entra con fundido. */
-const MUS={menu:new Audio('audio/menu.mp3'),game:new Audio('audio/gameplay.mp3')},MUS_GAIN=.55,MUS_TAIL=10,MUS_FADE=4;let musCur=null;
+const MUS={menu:new Audio('audio/menu.mp3'),game:new Audio('audio/gameplay.mp3')},MUS_GAIN=.55,MUS_TAIL=10,MUS_FADE=4,MUS_LOOP=2.5;let musCur=null;
 for(const k in MUS){MUS[k].loop=true;MUS[k].preload='auto';MUS[k].volume=0}
 function musicTick(dt){const want=S?'game':'menu',goal=muted||document.hidden?0:CFG.vol/100*MUS_GAIN;
   const ramp=(a,tv,r)=>{const v=a.volume;a.volume=clamp(v<tv?Math.min(tv,v+dt*r):Math.max(tv,v-dt*r),0,1)};
@@ -144,8 +144,10 @@ function musicTick(dt){const want=S?'game':'menu',goal=muted||document.hidden?0:
     else{a.loop=false;if(left>MUS_TAIL){ramp(a,0,goal/MUS_FADE);if(a.volume<=0){a.pause();musCur=null}}else ramp(a,goal,.8);if(musCur)return}}
   if(!musCur){musCur=want;MUS[want].currentTime=0}
   MUS[musCur].loop=true;
-  for(const k in MUS){const a=MUS[k],tv=k===musCur?goal:0;ramp(a,tv,.8);
-    if(tv>0&&a.paused)a.play().catch(()=>{});else if(tv===0&&a.volume===0&&!a.paused)a.pause()}}
+  for(const k in MUS){const a=MUS[k],cur=k===musCur,left=a.duration-a.currentTime,
+      env=cur&&isFinite(left)&&!a.paused?clamp(Math.min(a.currentTime,left)/MUS_LOOP,0,1):1,/* cierre y entrada suaves en cada vuelta */
+      tv=cur?goal*env:0;ramp(a,tv,.8);
+    if(tv>0&&a.paused)a.play().catch(()=>{});else if((!cur||goal===0)&&a.volume===0&&!a.paused)a.pause()}}
 function tone(type,f0,f1,dur,vol=.3,delay=0){const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02)}
 let noiseBuf=null;function noise(dur,vol,fc2,type='lowpass',delay=0){if(!noiseBuf){noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=R()*2-1}
   const t=AC.currentTime+delay,s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=noiseBuf;f.type=type;f.frequency.value=fc2;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t,R()*.5);s.stop(t+dur+.02)}
