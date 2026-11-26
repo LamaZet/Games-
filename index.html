@@ -640,6 +640,9 @@ function update(dt){
   for(const dr of doors.values())if(dr.state===1&&dr.swing<1)dr.swing=Math.min(1,dr.swing+dt*5);
   }
 function stepToward(u,tx,ty,sp,dt){const dx=tx-u.x,dy=ty-u.y,d=hyp(dx,dy),s=sp*dt;if(d<=s){u.x=tx;u.y=ty;return true}u.x+=dx/d*s;u.y+=dy/d*s;u.moving=true;u.moveAng=Math.atan2(dy,dx);return false}
+function grpSpd(o,base){if(!o.grp||!S)return base;const m=S.ops.filter(q=>q!==o&&q.grp===o.grp&&able(q)&&(q.path.length||q.plan.length));if(!m.length)return base;let v=base;
+  for(const q of m)v=Math.min(v,q.d.spd*(q.bag?.72:1));const rem=x=>x.path.length+x.plan.reduce((a,w)=>a+w.nodes.length,0),me=rem(o);
+  for(const q of m)if(hyp(q.x-o.x,q.y-o.y)>2.4&&rem(q)>me)return v*.3;return v}
 function updOp(o,dt){o.hitT-=dt;if(!o.alive||o.gone)return;o.react-=dt;o.cd-=dt;
   if(o.broken&&o.broken!=='flee'){o.moving=false;o.target=null;if(o.broken==='freeze')o.ang+=Math.sin(S.t*9)*dt*2;return}
   if(o.broken==='flee'){o.moving=false;o.target=null;if(o.path.length){const[nx,ny]=o.path[0],dr=doorAt(nx,ny);if(dr&&dr.state===0)openDoor(dr);else if(stepToward(o,nx+.5,ny+.5,o.d.spd*1.25,dt))o.path.shift()}const da=angD(o.ang,o.moveAng);o.ang+=da*Math.min(1,dt*10);return}
@@ -657,7 +660,7 @@ function updOp(o,dt){o.hitT-=dt;if(!o.alive||o.gone)return;o.react-=dt;o.cd-=dt;
     else if(!o.path.length&&!o.cur&&o.plan.length){o.cur=o.plan.shift();o.path=o.cur.nodes.slice()}
     if(o.path.length&&o.busy<=0&&!o.wait){const[nx,ny]=o.path[0],dr=doorAt(nx,ny);
       if(dr&&dr.state===0){doorAction(o,dr)}
-      else if(stepToward(o,nx+.5,ny+.5,o.d.spd*(o.target?.62:1)*(o.bag?.72:1),dt))o.path.shift()}}
+      else if(stepToward(o,nx+.5,ny+.5,grpSpd(o,o.d.spd*(o.bag?.72:1))*(o.target?.62:1),dt))o.path.shift()}}
   const want=o.target?Math.atan2(o.target.y-o.y,o.target.x-o.x):o.moving?o.moveAng:o.lookAng,da=angD(o.ang,want),tr=o.d.turn*dt;o.ang+=Math.abs(da)<tr?da:Math.sign(da)*tr}
   if(o.target&&o.react<=0&&o.cd<=0&&Math.abs(angD(o.ang,Math.atan2(o.target.y-o.y,o.target.x-o.x)))<.25)fire(o,o.target)}
 function arrive(o){const w=o.cur;o.cur=null;if(w.look!=null)o.lookAng=w.look;
@@ -827,7 +830,8 @@ function render(){
   if(S.slow>0)T('CÁMARA LENTA',GW*TS/2-TW('CÁMARA LENTA',2)/2,MY+22,'#ffffff90',2,null);
   if(S.paused&&!S.over){const s=S.mode==='leader'?'PAUSA':S.started?'PAUSA - DA ÓRDENES':'PLANIFICACIÓN - ELIGE A ALGUIEN Y HAZ CLIC EN EL MAPA';const w=TW(s,2)+16;px(GW*TS/2-w/2,MY+6,'#0b0d14d8',w,16);T(s,GW*TS/2-TW(s,2)/2,MY+9,(S.t*2|0)%2&&S.started?'#ffcd75':'#a7f070',2,null)}
   present()}
-function drawPlans(){for(const o of S.ops){if(!o.alive)continue;const sel=isSel(o),col=o.col;c.globalAlpha=sel?1:.5;
+function drawGroupTags(){for(const o of S.ops){if(!o.grp||!o.alive||o.gone)continue;const gt='G'+o.grp,x=X(o.x)-TW(gt)/2,y=Y(o.y)+7;px(x-1,y-1,'#0b0d14c0',TW(gt)+2,7);T(gt,x,y,GCOL[o.grp],1,null)}}
+function drawPlans(){drawGroupTags();for(const o of S.ops){if(!o.alive)continue;const sel=isSel(o),col=o.col;c.globalAlpha=sel?1:.5;
   let px0=X(o.x),py0=Y(o.y);const segs=[];if(o.path.length)segs.push({nodes:o.path,w:o.cur});else if(o.cur)segs.push({nodes:[],w:o.cur});for(const w of o.plan)segs.push({nodes:w.nodes,w});
   for(const s of segs){for(const[nx,ny]of s.nodes){const x1=X(nx+.5),y1=Y(ny+.5);lineP(px0,py0,x1,y1,col,1,3);px0=x1;py0=y1}
     const w=s.w;if(!w)continue;const wx=X(w.tx+.5),wy=Y(w.ty+.5);px(wx-3,wy-3,'#0b0d14',7,7);px(wx-2,wy-2,col,5,5);
@@ -852,6 +856,20 @@ function check(x,y,done,label,col){px(x,y,'#0b0d14',7,7);px(x+1,y+1,done?'#38b76
 /* ================= SELECCIÓN Y RUEDA DE ÓRDENES ================= */
 function selPool(){return S.ops.filter(o=>able(o)&&!(S.mode==='leader'&&o.player))}
 function selOne(id){S.selIds=[id];S.sel=id;S.wheel=null;sfx('radio',1+id*.1)}
+const GCOL=['','#ffcd75','#73eff7','#ef7d57','#b56cf2'];
+let MOD=false;
+function selToggle(id){const o=S.ops[id];if(!o||!able(o))return sfx('deny');S.selIds=isSel(o)?S.selIds.filter(i=>i!==id):(S.selIds||[]).concat(id);if(S.selIds.length)S.sel=S.selIds[S.selIds.length-1];S.wheel=null;sfx('radio',1.2+id*.1)}
+function grpMates(o){return o.grp?S.ops.filter(q=>q.grp===o.grp&&able(q)&&!(S.mode==='leader'&&q.player)):[o]}
+function selCard(o){if(MOD){selToggle(o.id);return}if(o.grp){const m=grpMates(o);if(m.length>1){S.selIds=m.map(q=>q.id);S.sel=o.id;S.wheel=null;sfx('radio',.9);return}}selOne(o.id)}
+function cleanGroups(){for(let g=1;g<GCOL.length;g++){const m=S.ops.filter(q=>q.grp===g&&q.alive&&!q.gone);if(m.length<2)for(const q of m)q.grp=0}}
+function makeGroup(){const l=who();if(l.length<2){sfx('deny');radio('CHOFER','Elige a 2 o más para agruparlos (Shift+clic o el botón + de cada tarjeta).','#ffcd75');return}
+  for(const o of l)o.grp=0;cleanGroups();let g=1;while(g<GCOL.length-1&&S.ops.some(q=>q.grp===g))g++;for(const o of l)o.grp=g;
+  radio('TÚ',l.map(o=>o.n).join(' y ')+', ustedes van juntos.',GCOL[g]);sfx('go')}
+function splitGroup(){const l=who().filter(o=>o.grp);if(!l.length){sfx('deny');return}for(const o of l)o.grp=0;cleanGroups();radio('TÚ','Cada uno por su cuenta.','#94b0c2');sfx('click')}
+function routeOf(o){return o.plan.length||o.cur||o.path.length>1}
+function routeList(){const l=who();return l.length?l:S.ops[S.sel]&&S.ops[S.sel].alive&&!(S.mode==='leader'&&S.ops[S.sel].player)?[S.ops[S.sel]]:[]}
+function cancelRoute(l){l=l||routeList();if(!l.some(o=>routeOf(o)||o.order||o.wait)){sfx('deny');return}for(const o of l){o.order=null;o.plan=[];o.cur=null;o.path=o.path.slice(0,1);o.wait=null;if(S.mode==='leader')o.order={k:'hold'}}ping(l[0].x,l[0].y,'#ff6b6b');radio('TÚ',(l.length>1?'Cancelen':'Cancela')+' la ruta. Quietos ahí.','#ff6b6b');sfx('click')}
+function undoLeg(l){l=l||routeList();let ok=false;for(const o of l){if(o.plan.length){o.plan.pop();ok=true}else if(o.cur||o.path.length>1){o.cur=null;o.path=o.path.slice(0,1);ok=true}}sfx(ok?'click':'deny')}
 function selAll(){S.selIds=selPool().map(o=>o.id);if(S.selIds.length)S.sel=S.selIds[0];S.wheel=null;sfx('radio',.8)}
 function who(){const ids=S.selIds||[];return S.ops.filter(o=>ids.includes(o.id)&&able(o)&&!(S.mode==='leader'&&o.player))}
 const isSel=o=>(S.selIds||[]).includes(o.id);
@@ -886,7 +904,10 @@ function openWheel(fx,fy,sx,sy){const list=who();const L=S.mode==='leader'?leade
     add('MIRAR HACIA ACÁ','#e8ecef',()=>{for(const o of list){if(S.mode!=='leader'&&(o.plan.length||!S.started)){const w=lastWp(o,true);w.look=Math.atan2(fy-(w.ty+.5),fx-(w.tx+.5))}else{o.lookAng=Math.atan2(fy-o.y,fx-o.x);if(S.mode==='leader'){resetOp(o);o.order={k:'hold'}}}}ping(fx,fy,'#e8ecef')});
     if(list.some(o=>o.fl>0))add('LANZAR FLASH','#f4f4f4',()=>flashAt(list,fx,fy));
     if(S.mode==='leader'){add('SÍGANME','#a7f070',()=>{for(const o of list){resetOp(o);o.order={k:'follow'}}radio('TÚ','¡Síganme!','#a7f070')});add('ALTO AHÍ','#94b0c2',()=>{for(const o of list){resetOp(o);o.order={k:'hold'}}radio('TÚ','¡Alto! Mantengan posición.','#a7f070')})}
-    else if(list.some(o=>o.plan.length))add('BORRAR RUTA','#ff6b6b',()=>{for(const o of list){o.plan=[];o.cur=null;o.path=o.path.slice(0,1);o.wait=null;o.order=null}})}
+  }
+  if(list.some(o=>o.plan.length>1))add('BORRAR ÚLTIMO TRAMO','#ef7d57',()=>undoLeg(list));
+  if(list.some(o=>routeOf(o)||o.wait||(o.order&&o.order.k!=='hold')))add('CANCELAR RUTA','#ff6b6b',()=>cancelRoute(list));
+  if(list.length>1&&!(list.every(o=>o.grp&&o.grp===list[0].grp)))add('AGRUPAR','#b56cf2',()=>makeGroup());
   if(!opts.length){sfx('deny');return}
   S.wheel={sx:sx,sy:sy,fx,fy,opts,tgt,whoL:whoLabel(list),t:0,col:list.length===1?list[0].col:'#ffcd75'};sfx('click')}
 function flashAt(list,fx,fy){const o=list.filter(q=>q.fl>0).sort((a,b)=>hyp(a.x-fx,a.y-fy)-hyp(b.x-fx,b.y-fy))[0];if(!o){sfx('deny');return}
@@ -923,7 +944,9 @@ function drawUI(){UI.length=0;const M=S.M;
     T(st,x+w-TW(st)-6,y+13,dead||o.broken?'#ff4d6d':o.wait?'#ffcd75':o.target?'#ff6b6b':'#94b0c2',1,null);
     bar(x+30,y+23,118,Math.max(0,o.hp)/o.max,o.hp>o.max*.5?'#a7f070':'#ff4d6d',3);
     const nc=o.nerve>=60?'#73eff7':o.nerve>=35?'#ffcd75':o.nerve>=15?'#ef7d57':'#ff4d6d';bar(x+30,y+31,118,o.nerve/100,nc,3);
-    if(!pl)UI.push({x,y,w,h:42,on:()=>{if(able(o)&&!pl)selOne(o.id);else sfx('deny')}})});
+    if(o.grp&&o.alive&&!o.gone){const gc=GCOL[o.grp],gt='G'+o.grp;px(x+w-TW(gt)-8,y+3,gc,TW(gt)+4,8);T(gt,x+w-TW(gt)-6,y+4,'#0b0d14',1,null)}
+    if(!pl){UI.push({x,y,w,h:42,on:()=>{if(able(o)&&!pl)selCard(o);else sfx('deny')}});
+      if(able(o)){const tx=x+4,ty=y+29,on=isSel(o);px(tx,ty,on?o.col:'#333c57',22,10);px(tx+1,ty+1,on?o.col:'#1d2432',20,8);T(on?'x':'+',tx+9,ty+2,on?'#0b0d14':'#94b0c2',1,null);UI.push({x:tx-2,y:ty-2,w:26,h:13,on:()=>selToggle(o.id)})}}});
   T('VIDA / NERVIOS',x0+30,MY+24+S.ops.length*44,'#3a4256',1,null);
   /* objectives */
   const oy=MY+24+4*44+10;px(x0,oy,'#121822',W0,56);px(x0,oy,'#ffcd75',W0,1);T('OBJETIVOS',x0+5,oy+4,'#ffcd75',1,null);
@@ -932,8 +955,14 @@ function drawUI(){UI.length=0;const M=S.M;
   check(x0+5,oy+33,S.bags>=totalBags()&&totalBags()>0,'BOLSAS A LA VAN '+S.bags+'/'+totalBags(),'#a7f070');
   check(x0+5,oy+43,S.over&&S.win,'¡HUIR!','#ff6b6b');
   /* how-to */
-  const hy=oy+62;const tips=S.mode==='leader'?(S.touch?['TOCA EL SUELO: CAMINAR','ELIGE A ALGUIEN O A TODOS','MANTÉN PULSADO: ÓRDENES']:['CLIC: CAMINAS TÚ','ELIGE A ALGUIEN O A TODOS,','CLIC DERECHO: ÓRDENES']):['1. ELIGE A ALGUIEN O A TODOS','2. CLIC EN EL MAPA, PUERTA,','   BÓVEDA, PANEL O BOLSA','3. ELIGE LA ORDEN'];
+  const hy=oy+62;const tips=S.mode==='leader'?(S.touch?['TOCA EL SUELO: CAMINAR','MANTÉN PULSADO: ÓRDENES']:['CLIC: CAMINAS TÚ','CLIC DERECHO: ÓRDENES']):['1. ELIGE A UNO, VARIOS O TODOS','2. CLIC EN EL MAPA Y ELIGE','   LA ORDEN EN LA RUEDA'];
   tips.forEach((l,i)=>T(l,x0+4,hy+i*8,'#6b7a90',1,null));
+  /* groups and routes */
+  {const gy=VH-92,l=who(),grouped=l.length>1&&l.every(o=>o.grp&&o.grp===l[0].grp),hasR=routeList().some(o=>routeOf(o)||o.wait||(o.order&&o.order.k!=='hold'));
+   T('VARIOS: SHIFT+CLIC O BOTÓN +',x0+4,gy-9,'#3a4256',1,null);
+   btn(x0,gy,76,18,grouped?'SEPARAR':'AGRUPAR',()=>grouped?splitGroup():makeGroup(),{dis:l.length<2,col:'#b56cf2',on:grouped,key:'J'});
+   btn(x0+79,gy,76,18,'BORRAR TRAMO',()=>undoLeg(),{dis:!routeList().some(routeOf),col:'#ef7d57',key:'Z'});
+   btn(x0,gy+21,W0,18,'CANCELAR RUTA',()=>cancelRoute(),{dis:!hasR,col:'#ff6b6b',key:'X'})}
   /* bottom actions */
   const nIn=S.ops.filter(q=>able(q)&&inVan(q)).length,nOut=S.ops.filter(q=>q.alive&&!q.gone).length-nIn;
   const by=VH-46;
@@ -949,8 +978,8 @@ function drawUI(){UI.length=0;const M=S.M;
   drawWheel();drawTutSpot()}
 function togglePause(){if(S.over)return;if(!S.started){S.started=true;S.paused=false;radio('TÚ','¡Máscaras puestas! ¡Adentro!','#a7f070');return}S.paused=!S.paused;sfx('click')}
 function cycleHold(){const o=S.ops[S.sel];if(!o||!o.alive)return;const w=lastWp(o,true);w.hold=w.hold===null?'A':w.hold==='A'?'B':null;sfx('click')}
-function undo(){const o=S.ops[S.sel];if(!o)return;if(o.plan.length){o.plan.pop();sfx('click')}else if(o.cur||o.path.length){o.cur=null;o.path=o.path.slice(0,1);sfx('click')}else sfx('deny')}
-function clearPlan(){const o=S.ops[S.sel];if(!o)return;o.order=null;o.plan=[];o.cur=null;o.path=o.path.slice(0,1);if(o.wait)o.wait=null;sfx('click')}
+function undo(){undoLeg()}
+function clearPlan(){cancelRoute()}
 function mapClick(fx,fy,right){const o=S.ops[S.sel],tx=Math.floor(fx),ty=Math.floor(fy);
   if(right){if(S.tool!=='mover'){S.tool='mover';return}undo();return}
   if(S.tool==='puerta'){let best=null,bd=1.2;for(const dr of doors.values()){const d=hyp(dr.x+.5-fx,dr.y+.5-fy);if(d<bd&&dr.state===0){bd=d;best=dr}}if(best){best.mode=best.mode==='abrir'?'patear':best.mode==='patear'?'flash':'abrir';sfx('click')}else sfx('deny');return}
@@ -975,6 +1004,7 @@ function tutSteps(){const L=S.mode==='leader',V=S.vault,cards=[PX-1,MY+22,160,4*
   {t:'El botín y el reloj',p:'Aquí ves cuántas bolsas llevas y el dinero del golpe. A la derecha, <b>cuánto falta para que llegue la policía</b>. Si suena la alarma, el reloj baja a 40 segundos.',r:[258,0,330,22]},
   {t:'Tu banda',p:'Cada tarjeta es un miembro: retrato, clase, nivel y lo que está haciendo.<br>La barra <b style="color:#a7f070">verde</b> es la vida y la <b style="color:#73eff7">azul</b> son los <b>nervios</b>. Con los nervios bajos fallan disparos, desobedecen, se paralizan, se rinden o huyen.',r:cards},
   {t:'Elige a quién mandar',p:L?'Tú controlas al primero de la banda. Para mandar a los demás, toca la tarjeta de uno (teclas 2–4) o elige a <b>toda la banda</b> con el botón de arriba (tecla 1).':'Toca una <b>tarjeta</b>, el personaje en el mapa o las teclas <b>1–4</b> para elegir a una persona. El botón de arriba elige a <b>toda la banda</b> (tecla E). Los elegidos se marcan con su color.',r:[PX-1,MY+1,160,4*44+26]},
+  {t:'Grupos y rutas',p:'Para mandar a varios a la vez, usa <b>Shift+clic</b> o el botón <b>+</b> de cada tarjeta. Con 2 o más elegidos, <b>AGRUPAR</b> (tecla J) los une: <b>caminan juntos</b> al paso del más lento y, al tocar la tarjeta de uno, se elige a todo el grupo. <b>BORRAR TRAMO</b> (Z) quita el último punto de la ruta y <b>CANCELAR RUTA</b> (X) la borra entera. También salen en la rueda de órdenes.',r:[PX-1,VH-104,160,62]},
   {t:'La rueda de órdenes',p:L?'<b>Clic izquierdo</b>: caminas tú (también WASD). Disparas solo cuando ves a un enemigo.<br><b>Clic derecho</b> (o mantener pulsado en el móvil): abre la <b>rueda de órdenes</b> para los compañeros elegidos. Las opciones cambian según lo que toques: suelo, puerta, bóveda, panel, bolsa…':'Con alguien elegido, haz <b>clic en el mapa</b>: aparece una <b>rueda</b> con las órdenes posibles según lo que tocaste.<br>Suelo: ir, esperar código A/B, mirar, flash. Puerta: despejar cuarto, abrir, patear o flash y entrar. Elige con clic o con el número.',r:[MX,MY,GW*TS,GH*TS]},
   {t:'Los objetivos',p:'Los carteles en el mapa te guían: <b>PANEL</b> (si lo cortas no hay cámaras ni alarma), <b>BÓVEDA</b> (el Técnico la taladra rápido; Explosivos la vuela con C4) y <b>CAMIONETA</b>. Aquí ves tu progreso.',r:[PX-1,MY+24+4*44+8,160,60]},
   {t:'Cuidado con…',p:'Las <b>cámaras</b> (cono amarillo) dan la alarma si te ven unos segundos. Los <b>guardias</b> alertados corren a activarla, y los <b>empleados</b> asustados también: acércate a ellos para que se tiren al suelo.',r:camR},
@@ -1002,7 +1032,8 @@ let jp=null,lp=null;
 cv.addEventListener('pointermove',e=>{[mouse.x,mouse.y]=toV(e);if(S&&jp!==null&&e.pointerId===jp){const dx=mouse.x-JX,dy=mouse.y-JY,l=hyp(dx,dy),m=Math.min(1,l/16);S.joy=l>2?{x:dx/l*m,y:dy/l*m}:null}if(lp&&e.pointerId===lp.id&&hyp(mouse.x-lp.x,mouse.y-lp.y)>7){clearTimeout(lp.tm);lp=null}});
 cv.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(!S||modal.classList.contains('on'))return;if(S.tut)return;[mouse.x,mouse.y]=toV(e);const touch=e.pointerType==='touch';if(touch)S.touch=true;else if(e.pointerType==='mouse')S.touch=false;
   if(S.wheel&&!S.over){if(e.button===2){S.wheel=null;return}wheelClick();return}
-  if(e.button!==2)for(let i=UI.length-1;i>=0;i--){const u=UI[i];if(mouse.x>=u.x&&mouse.x<u.x+u.w&&mouse.y>=u.y&&mouse.y<u.y+u.h){if(u.on)u.on();return}}
+  MOD=e.shiftKey||e.ctrlKey||e.metaKey;
+  if(e.button!==2)for(let i=UI.length-1;i>=0;i--){const u=UI[i];if(mouse.x>=u.x&&mouse.x<u.x+u.w&&mouse.y>=u.y&&mouse.y<u.y+u.h){if(u.on)u.on();MOD=false;return}}MOD=false;
   if(S.over)return;
   if(S.mode==='leader'&&touch&&hyp(mouse.x-JX,mouse.y-JY)<30){jp=e.pointerId;try{cv.setPointerCapture(e.pointerId)}catch(_){}return}
   if(!(mouse.x>=MX&&mouse.x<MX+GW*TS&&mouse.y>=MY&&mouse.y<MY+GH*TS))return;const fx=(mouse.x-MX)/TS,fy=(mouse.y-MY)/TS;
@@ -1011,7 +1042,7 @@ cv.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(!S||moda
     leaderGo(fx,fy)}
   else{if(e.button===2){undo();return}
     const u=S.ops.filter(q=>able(q)&&hyp(q.x-fx,q.y-fy)<.8).sort((a,b)=>hyp(a.x-fx,a.y-fy)-hyp(b.x-fx,b.y-fy))[0];
-    if(u){if(e.shiftKey){S.selIds=isSel(u)?S.selIds.filter(i=>i!==u.id):S.selIds.concat(u.id);S.sel=u.id;sfx('radio')}else selOne(u.id);return}
+    if(u){if(e.shiftKey||e.ctrlKey||e.metaKey)selToggle(u.id);else{MOD=false;selCard(u)}return}
     openWheel(fx,fy,mouse.x,mouse.y)}});
 addEventListener('pointerup',e=>{if(jp!==null&&e.pointerId===jp){jp=null;if(S)S.joy=null}if(lp&&lp.id===e.pointerId){clearTimeout(lp.tm);if(!lp.done&&S&&!S.over&&!S.wheel)leaderGo(lp.fx,lp.fy);lp=null}});
 addEventListener('pointercancel',e=>{if(jp===e.pointerId){jp=null;if(S)S.joy=null}lp=null});
@@ -1021,14 +1052,16 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('keydown',e=>{keys[e.code]=true;if(!S||modal.classList.contains('on'))return;audioInit();const k=e.code;if(S.tut){if(k==='ArrowRight'||k==='Enter'||k==='Space'){e.preventDefault();tutNav('next')}else if(k==='ArrowLeft')tutNav('prev');else if(k==='Escape')tutNav('skip');return}if(e.key&&e.key.length&&!e.repeat&&k.startsWith('Key'))S.touch=false;
   if(S.wheel&&/^Digit[1-8]$/.test(k)){wheelKey(+k.slice(5)-1);return}
   if(S.wheel&&k==='Escape'){S.wheel=null;return}
-  if(S.mode==='leader'&&/^Digit[1-4]$/.test(k)){const n=+k.slice(5)-1;if(n===0)selAll();else if(S.ops[n]&&able(S.ops[n]))selOne(n);return}
+  if(k==='KeyJ'&&!S.over){const l=who();if(l.length>1&&l.every(o=>o.grp&&o.grp===l[0].grp))splitGroup();else makeGroup();return}
+  if(S.mode==='leader'&&!S.over&&(k==='KeyZ'||k==='Backspace')){undoLeg();return}if(S.mode==='leader'&&!S.over&&(k==='KeyX'||k==='Delete')){cancelRoute();return}
+  if(S.mode==='leader'&&/^Digit[1-4]$/.test(k)){const n=+k.slice(5)-1;if(n===0)selAll();else if(S.ops[n]&&able(S.ops[n])){if(e.shiftKey)selToggle(n);else{MOD=false;selCard(S.ops[n])}}return}
   if(S.mode==='leader'){if(k==='Space'){e.preventDefault();togglePause()}else if(k==='Escape')pauseMenu();else if(S.over||S.paused){}else if(k==='KeyQ')allOrder('follow');else if(k==='KeyE')allOrder('hold');else if(k==='KeyV')heistOrder('vault');else if(k==='KeyB')heistOrder('loot');else if(k==='KeyP')heistOrder('panel');else if(k==='KeyH')escape();else if(k==='KeyG'){const L=S.ops[0];if(L.alive)throwFlash(L,(mouse.x-MX)/TS,(mouse.y-MY)/TS)}else if(k==='KeyF'){const L=S.ops[0];if(L.alive&&L.busy<=0)playerKick(L)}else if(k==='KeyT'){S.halcon=!S.halcon;S.ts=1}else if(k==='KeyN')blackout();if(k.startsWith('Arrow'))e.preventDefault();return}
-  if(/^Digit[1-4]$/.test(k)){const n=+k.slice(5)-1;if(S.ops[n]&&able(S.ops[n]))selOne(n)}
+  if(/^Digit[1-4]$/.test(k)){const n=+k.slice(5)-1;if(S.ops[n]&&able(S.ops[n])){if(e.shiftKey)selToggle(n);else{MOD=false;selCard(S.ops[n])}}}
   else if(k==='KeyE'||k==='Backquote')selAll()
   else if(k==='Tab'){e.preventDefault();for(let i=1;i<=S.ops.length;i++){const j=(S.sel+i)%S.ops.length;if(S.ops[j].alive){S.sel=j;break}}sfx('radio')}
   else if(k==='Space'){e.preventDefault();togglePause()}
   else if(k==='KeyV')heistOrder('vault',who());else if(k==='KeyK')heistOrder('loot',who());else if(k==='KeyN')heistOrder('panel',who());else if(k==='KeyH'&&S.started)escape();
-  else if(k==='KeyC')cycleHold();else if(k==='KeyZ')undo();else if(k==='KeyX')clearPlan();
+  else if(k==='KeyC')cycleHold();else if(k==='KeyZ'||k==='Backspace')undo();else if(k==='KeyX'||k==='Delete')clearPlan();
   else if(k==='KeyA'&&S.started&&!S.over)goCode('A');else if(k==='KeyB'&&S.started&&!S.over)goCode('B');
   else if(k==='Escape'){if(S.tool!=='mover')S.tool='mover';else pauseMenu()}});
 
