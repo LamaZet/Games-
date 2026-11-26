@@ -68,3 +68,4 @@ Mazmorra con física de arena que cae (estilo Noita) y hechizos.
 | 1.0 | `huerto-v1.0` | Juego de granja estilo Stardew Valley. |
 
 | v2.4 | Balance anti-exploits: sistema de semanas (alquiler e intereses también en trabajitos y bajar el perfil; condenas en semanas), vigilancia por banco, huir sin botín no cuenta, desbloqueo con 2★ y mitad de bolsas, penalización por abandonar o recargar a medias, objetivo final con plazo de 30 semanas (deuda → Reserva 2★ → planos → EL GRAN GOLPE) y pantalla de victoria con rango. |
+| v2.5 | Grupos y rutas en la misión: elegir varios (Shift+clic, botón + en la tarjeta o Shift+número), AGRUPAR/SEPARAR (J) para que caminen juntos al paso del más lento, BORRAR TRAMO (Z) y CANCELAR RUTA (X) en el panel y en la rueda de órdenes; paso nuevo en el tutorial. |
