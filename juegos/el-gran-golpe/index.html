@@ -133,6 +133,22 @@ function present(){uc.imageSmoothingEnabled=false;uc.drawImage(lo,0,0,up.width,u
 /* ================= AUDIO ================= */
 let AC=null,master=null,muted=false;const lastSfx={};
 function audioInit(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();master=AC.createGain();master.gain.value=.3*CFG.vol/100;master.connect(AC.destination)}catch(e){AC=null}}
+/* Música: menú/escondite vs. golpe en curso. Al cambiar, la pista actual termina sola si le quedan
+   ≤MUS_TAIL s; si le queda más, se apaga con un fundido de MUS_FADE s. La siguiente entra con fundido. */
+const MUS={menu:new Audio('audio/menu.mp3'),game:new Audio('audio/gameplay.mp3')},MUS_GAIN=.55,MUS_TAIL=10,MUS_FADE=4,MUS_LOOP=2.5,MUS_GAP=3;let musCur=null,musGap=0;
+for(const k in MUS){MUS[k].loop=false;MUS[k].preload='auto';MUS[k].volume=0}
+function musicTick(dt){const want=S?'game':'menu',goal=muted||document.hidden?0:CFG.vol/100*MUS_GAIN;
+  const ramp=(a,tv,r)=>{const v=a.volume;a.volume=clamp(v<tv?Math.min(tv,v+dt*r):Math.max(tv,v-dt*r),0,1)};
+  if(musCur&&musCur!==want){const a=MUS[musCur],left=a.duration-a.currentTime;
+    if(goal===0||a.paused||!isFinite(left)){a.pause();a.volume=0;musCur=null}
+    else{if(left>MUS_TAIL){ramp(a,0,goal/MUS_FADE);if(a.volume<=0){a.pause();musCur=null}}else ramp(a,goal,.8);if(musCur)return}}
+  if(!musCur){musCur=want;MUS[want].currentTime=0}
+  for(const k in MUS){const a=MUS[k],cur=k===musCur,left=a.duration-a.currentTime,
+      env=cur&&isFinite(left)&&!a.paused?clamp(Math.min(a.currentTime,left)/MUS_LOOP,0,1):1,/* cierre y entrada suaves en cada vuelta */
+      tv=cur?goal*env:0;
+    if(cur&&a.ended){musGap+=dt;if(musGap<MUS_GAP)continue;musGap=0;a.currentTime=0;a.volume=0}else if(cur)musGap=0;/* silencio entre vueltas */
+    ramp(a,tv,.8);
+    if(tv>0&&a.paused)a.play().catch(()=>{});else if((!cur||goal===0)&&a.volume===0&&!a.paused)a.pause()}}
 function tone(type,f0,f1,dur,vol=.3,delay=0){const t=AC.currentTime+delay,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(Math.max(20,f1),t+dur);g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.02)}
 let noiseBuf=null;function noise(dur,vol,fc2,type='lowpass',delay=0){if(!noiseBuf){noiseBuf=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=R()*2-1}
   const t=AC.currentTime+delay,s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=noiseBuf;f.type=type;f.frequency.value=fc2;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(f);f.connect(g);g.connect(master);s.start(t,R()*.5);s.stop(t+dur+.02)}
@@ -1180,7 +1196,9 @@ addEventListener('keydown',e=>{keys[e.code]=true;if(!S||modal.classList.contains
 const modal=$('modal'),box=$('box');
 function open(h){box.classList.remove('wide');modal.classList.remove('full');box.innerHTML=h;modal.classList.add('on');if(S&&S.started&&!S.over)S.paused=true}
 function close(){modal.classList.remove('on')}
+/* Herramienta de desarrollo: abre index.html?thumbs y lee window.THUMBS para regenerar img/bank-N.png si cambias los mapas */
 function preview(map){parse(map);buildStatic();const cn=document.createElement('canvas');cn.width=GW*TS;cn.height=GH*TS;cn.getContext('2d').drawImage(staticLayer,0,0);return cn.toDataURL()}
+const bankImg=i=>`img/bank-${i}.png`;
 const stars=n=>'★'.repeat(n)+'☆'.repeat(3-n);
 let PICK={b:0,sq:null,kit:null};
 const nbar=v=>`<span class="bar"><i style="width:${v}%;background:${v>=60?'#73eff7':v>=35?'#ffcd75':v>=15?'#ef7d57':'#ff4d6d'}"></i></span>`;
@@ -1227,12 +1245,12 @@ function hq(msg){S=null;setSide(false);if(!GC||!GC.roster)newCareer();const C=GC
   const M=msg?`<div class="msg">${msg}</div>`:'';const pct=C.upg.lavanderia?8:12,n=PICK.sq.size;let h='';
   if(CUR==='hub'){const NU=newUnlocks();const ck=(ok,t)=>`<li style="color:${ok?'#a7f070':'#94b0c2'}"><span class="gk">${ok?'✔':'○'}</span>${t}</li>`;
     h=`<div class="hubwrap"><div class="hubl"><h2>RESUMEN</h2>${M}${NU}${hdr()}</div><aside class="goalbox"><div class="goalmain"><div class="gtag">OBJETIVO PRINCIPAL</div><div class="gtitle">DAR EL GRAN GOLPE</div><p class="note">En la semana ${DEADLINE} trasladan el oro de la Reserva. Hay que sacar ${FINAL_BAGS}+ bolsas. Es tu única oportunidad.</p></div><div class="msg goalsub"><b>OBJETIVOS</b><ul class="goals">${ck(C.debt<=0,'Saldar la deuda con Don Ramiro')}${ck(C.resOK,'Robar la Reserva Atlántica con 2★')}${ck(C.upg.planos,'Comprar los planos del traslado')}</ul></div></aside><div class="hubcta"><div class="hub"><button class="hubc main" data-go="plan1"><i>◆</i><b>PLANEAR UN GOLPE</b><span>Elige el banco, la banda y el equipo, paso a paso.</span></button></div></div></div>`}
-  else if(CUR==='plan1'){const imgs=BANKS.map(b=>preview(b));h=`<h2>PLANEAR UN GOLPE</h2>${stepper(1)}${M}<p class="note">¿Qué banco vas a asaltar? Cada golpe dura una semana.${UL('vigilancia')?' Robar el mismo banco seguido sube su <b>vigilancia</b>: menos dinero en la bóveda y la policía llega antes. Baja sola con las semanas.':''}</p><div class="list">${BANKINFO.map((b,i)=>{const lock=i===FINAL?!finalOpen(C):i>=C.unlocked;if(i===FINAL&&!C.upg.planos&&!C.resOK)return '';return `<button class="ms ${PICK.b===i?'on':''} ${lock?'lock':''}" data-b="${i}" ${lock?'disabled':''}><img src="${imgs[i]}" alt="" style="width:150px;height:98px"><span><b>${b.n.toUpperCase()}</b><br><span class="note">${b.d}</span><br><span class="stars">${b.final?'★★★★ FINAL':'★'.repeat(b.diff)+'☆'.repeat(3-b.diff)}</span>${lock?`<br><span class="note">${i===FINAL?(C.debt>0?'Don Ramiro no te deja tocarlo hasta saldar la deuda.':'Necesitas los planos del traslado (Finanzas).'):'Saca al menos la mitad de las bolsas con 2★ en el anterior para desbloquearlo.'}</span>`:''}</span><span class="r">${lootCount(i)} bolsas × <b>${fmt(bagVal(i))}</b>${bagVal(i)<b.bag?` <s class="note">${fmt(b.bag)}</s>`:''}<br>Policía en <b>${clock(policeTime(i))}</b>${UL('vigilancia')?`<br><span class="note">Vigilancia ${watchTxt(i)}</span>`:''}</span></button>`}).join('')}</div>${nav('hub','plan2')}`}
+  else if(CUR==='plan1'){h=`<h2>PLANEAR UN GOLPE</h2>${stepper(1)}${M}<p class="note">¿Qué banco vas a asaltar? Cada golpe dura una semana.${UL('vigilancia')?' Robar el mismo banco seguido sube su <b>vigilancia</b>: menos dinero en la bóveda y la policía llega antes. Baja sola con las semanas.':''}</p><div class="list">${BANKINFO.map((b,i)=>{const lock=i===FINAL?!finalOpen(C):i>=C.unlocked;if(i===FINAL&&!C.upg.planos&&!C.resOK)return '';return `<button class="ms ${PICK.b===i?'on':''} ${lock?'lock':''}" data-b="${i}" ${lock?'disabled':''}><img src="${bankImg(i)}" alt="" style="width:150px;height:98px"><span><b>${b.n.toUpperCase()}</b><br><span class="note">${b.d}</span><br><span class="stars">${b.final?'★★★★ FINAL':'★'.repeat(b.diff)+'☆'.repeat(3-b.diff)}</span>${lock?`<br><span class="note">${i===FINAL?(C.debt>0?'Don Ramiro no te deja tocarlo hasta saldar la deuda.':'Necesitas los planos del traslado (Finanzas).'):'Saca al menos la mitad de las bolsas con 2★ en el anterior para desbloquearlo.'}</span>`:''}</span><span class="r">${lootCount(i)} bolsas × <b>${fmt(bagVal(i))}</b>${bagVal(i)<b.bag?` <s class="note">${fmt(b.bag)}</s>`:''}<br>Policía en <b>${clock(policeTime(i))}</b>${UL('vigilancia')?`<br><span class="note">Vigilancia ${watchTxt(i)}</span>`:''}</span></button>`}).join('')}</div>${nav('hub','plan2')}`}
   else if(CUR==='plan2'){h=`<h2>PLANEAR UN GOLPE</h2>${stepper(2)}${M}<p class="note">Elige hasta 4 miembros (${n}/4). Cada uno que escape se lleva ${pct}% del botín. Sin <b>Técnico</b> la bóveda tarda mucho; el <b>Cerebro</b> calma a la banda.</p><div class="list">${C.roster.map(r=>crewCard(r,PICK.sq.has(r.id),`data-r="${r.id}"`)).join('')||'<p class="note">No tienes a nadie. Ve a RECLUTAR.</p>'}</div>${nav('plan1','plan3',null,!n)}`}
   else if(CUR==='plan3'){h=`<h2>PLANEAR UN GOLPE</h2>${stepper(3)}${M}${hdr()}<p class="note">Elige qué llevar. Lo que uses se gasta; <b>si el golpe fracasa, pierdes todo lo que llevaste</b>. Puedes comprar aquí mismo.</p><div class="list">${itemRows(true)}</div>${nav('plan2','plan4')}`}
   else if(CUR==='plan4'){const b=PICK.b,bi=BANKINFO[b],sq=C.roster.filter(r=>PICK.sq.has(r.id)).slice(0,4),kit=Object.entries(PICK.kit).filter(([k,v])=>v>0),max=lootCount(b)*bagVal(b),cutP=sq.reduce((a,r)=>a+Math.max(.03,pct/100+fxOf(r.traits).cut),0);
     const warn=[];if(!sq.some(r=>r.cls==='tecnico'))warn.push('Nadie es Técnico: taladrar la bóveda será lento.');if(!PICK.kit.broca&&!(PICK.kit.c4&&sq.some(r=>r.cls==='explosivos')))warn.push('No llevas broca térmica: taladrar tardará 3 veces más.');if(PICK.kit.c4&&!sq.some(r=>r.cls==='explosivos'))warn.push('Llevas C4 pero nadie es de Explosivos.');if(sq.some(r=>r.nerve<35))warn.push('Hay miembros con los nervios bajos.');if(b===FINAL)warn.push('Golpe final: necesitas llevar al menos '+FINAL_BAGS+' bolsas a la camioneta para ganar la partida. Si fracasas, puedes reintentar mientras queden semanas.');
-    h=`<h2>PLANEAR UN GOLPE</h2>${stepper(4)}${M}<div class="sum"><img src="${preview(BANKS[b])}" alt=""><div><b class="money">${bi.n.toUpperCase()}</b><br><span class="note">${bi.d}</span><div class="stat" style="margin:8px 0 0"><span>Policía llega en</span><span>${clock(policeTime(b)+(PICK.kit.chofer?25:0))}</span><span>Botín máximo</span><span class="money">${fmt(max)}</span><span>Parte de la banda</span><span>${Math.round(cutP*100)}%</span></div></div></div>
+    h=`<h2>PLANEAR UN GOLPE</h2>${stepper(4)}${M}<div class="sum"><img src="${bankImg(b)}" alt=""><div><b class="money">${bi.n.toUpperCase()}</b><br><span class="note">${bi.d}</span><div class="stat" style="margin:8px 0 0"><span>Policía llega en</span><span>${clock(policeTime(b)+(PICK.kit.chofer?25:0))}</span><span>Botín máximo</span><span class="money">${fmt(max)}</span><span>Parte de la banda</span><span>${Math.round(cutP*100)}%</span></div></div></div>
     <h2 style="margin-top:12px">LA BANDA</h2><p>${sq.map((r,i)=>`<span style="color:${SQCOL[i]}">■</span> <b>${r.name}</b> <span class="note">${HCLS[r.cls].n} Nv${r.lvl}</span>`).join(' &nbsp; ')}</p>
     <h2>EL EQUIPO</h2><p class="note">${kit.length?kit.map(([k,v])=>v+'× '+ITEMS[k].n).join(' · '):'No llevas nada.'}</p>
     ${warn.length?`<p style="color:#ef7d57">${warn.map(w=>'⚠ '+w).join('<br>')}</p>`:''}
@@ -1385,7 +1403,7 @@ modal.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.d
 
 /* ================= LOOP ================= */
 let last=performance.now(),acc=0;
-function loop(now){const rdt=Math.min(.05,(now-last)/1000);last=now;
+function loop(now){const rdt=Math.min(.05,(now-last)/1000);last=now;musicTick(rdt);
   if(S){if(!S.decals)S.decals=[];updSide(rdt);
     S.shake=Math.max(0,S.shake-rdt*18);S.white=Math.max(0,S.white-rdt*1.4);for(const l of S.log)l.t-=rdt;
     if(S.started&&!S.paused&&!S.tut&&!modal.classList.contains('on')&&(!S.over||performance.now()-S.endAt<1700)){let sc=S.speed;
@@ -1396,6 +1414,7 @@ function loop(now){const rdt=Math.min(.05,(now-last)/1000);last=now;
     render()}
   else{c.fillStyle='#07080d';c.fillRect(0,0,VW,VH);if(staticLayer){c.globalAlpha=.4;c.drawImage(staticLayer,MX,MY);c.globalAlpha=1}present()}
   requestAnimationFrame(loop)}
+if(/[?&]thumbs\b/.test(location.search))window.THUMBS=BANKS.map(preview);
 title();requestAnimationFrame(loop);
 }
 </script>
